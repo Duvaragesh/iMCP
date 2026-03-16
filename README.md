@@ -255,16 +255,54 @@ pip install -r requirements.txt
 
 ### 2. Configure environment variables
 
-Create a `.env` file in the project root:
+Copy the example file and edit it:
 
-```env
-SECRET_KEY=your-long-random-secret-key-here
-DEBUG=True
-ALLOWED_HOSTS=localhost,127.0.0.1
-IMCP_API_TOKEN=your-admin-api-token
+```bash
+cp .env.example .env
 ```
 
-> The `SECRET_KEY` is also used to derive the Fernet encryption key for stored credentials. Use a strong random value and keep it consistent across restarts.
+`.env` reference (all variables):
+
+```env
+# Application
+APP_NAME=iMCP
+APP_VERSION=0.1.0
+DEBUG=True                          # Set to False in production
+
+# Database
+DATABASE_URL=sqlite:///./imcp.db    # Swap to postgres://... for production
+
+# Cache
+CACHE_TTL_SECONDS=3600              # How long tool definitions are cached
+CACHE_MAX_SIZE=1000                 # Max number of cached tool sets
+
+# Rate Limiting
+RATE_LIMIT_PER_MINUTE=100
+
+# Authentication
+JWT_SECRET=change-me-in-production-use-strong-secret   # Also used for Fernet encryption
+JWT_ALGORITHM=HS256
+# JWKS_URL=https://your-auth-provider.com/.well-known/jwks.json  # Optional: external JWKS
+
+# CORS
+CORS_ORIGINS=["http://localhost:3000","http://localhost:8000"]
+
+# Logging
+LOG_LEVEL=INFO                      # DEBUG | INFO | WARNING | ERROR
+LOG_FORMAT=json
+
+# Redaction — fields scrubbed from all audit logs
+REDACTION_PATTERNS=["password","token","secret","authorization","bearer","ssn","credit_card"]
+
+# Observability (OpenTelemetry)
+OTEL_ENABLED=false
+# OTEL_ENDPOINT=http://localhost:4318   # Uncomment to enable tracing
+
+# Health Check
+HEALTH_CHECK_INTERVAL_MINUTES=5
+```
+
+> **Important:** `JWT_SECRET` is also used to derive the Fernet encryption key for stored service credentials. Use a strong random value and keep it consistent across restarts — changing it will invalidate all stored credentials.
 
 ### 3. Initialize the database
 
@@ -566,17 +604,27 @@ All portal and MCP endpoints require a bearer token. API keys are stored as hash
 
 ## Configuration
 
-Key settings in `settings.py` / `.env`:
+All settings are controlled via `.env` (copy from `.env.example`):
 
-| Setting | Description |
-|---|---|
-| `SECRET_KEY` | Django secret + Fernet encryption key derivation source |
-| `DEBUG` | Set to `False` in production |
-| `ALLOWED_HOSTS` | Comma-separated list of allowed hostnames |
-| `IMCP_API_TOKEN` | Default admin bearer token |
-| `IMCP_CACHE_TTL` | Tool cache TTL in seconds (default: 3600) |
-| `IMCP_CACHE_MAX_SIZE` | Maximum number of cached tool sets (default: 100) |
-| `MEDIA_ROOT` | Directory where uploaded spec files are stored |
+| Variable | Default | Description |
+|---|---|---|
+| `APP_NAME` | `iMCP` | Application name shown in portal |
+| `APP_VERSION` | `0.1.0` | Version string |
+| `DEBUG` | `false` | Set to `false` in production |
+| `DATABASE_URL` | `sqlite:///./imcp.db` | Database connection string — swap to `postgres://...` for production |
+| `CACHE_TTL_SECONDS` | `3600` | How long tool definitions are cached (seconds) |
+| `CACHE_MAX_SIZE` | `1000` | Max cached tool sets |
+| `RATE_LIMIT_PER_MINUTE` | `100` | Max requests per minute per client |
+| `JWT_SECRET` | *(required)* | Secret for JWT signing **and** Fernet credential encryption — keep stable |
+| `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
+| `JWKS_URL` | *(optional)* | External JWKS URL for validating tokens from an identity provider |
+| `CORS_ORIGINS` | `["http://localhost:8000"]` | Allowed CORS origins (JSON array) |
+| `LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
+| `LOG_FORMAT` | `json` | Log output format |
+| `REDACTION_PATTERNS` | see `.env.example` | JSON array of field names scrubbed from all audit logs |
+| `OTEL_ENABLED` | `false` | Enable OpenTelemetry tracing |
+| `OTEL_ENDPOINT` | *(optional)* | OTLP endpoint, e.g. `http://localhost:4318` |
+| `HEALTH_CHECK_INTERVAL_MINUTES` | `5` | How often upstream reachability checks run |
 
 ### Scaling to Production
 
