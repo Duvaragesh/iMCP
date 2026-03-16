@@ -85,28 +85,7 @@ iMCP works with any system that exposes a WSDL, OpenAPI spec, or a callable HTTP
 
 ## How It Works
 
-```
-AI Assistant (Claude / Copilot / any MCP client)
-          |
-          |  MCP protocol (tools/list, tools/call)
-          v
-+─────────────────────────────────────────────────+
-│                    iMCP Server                   │
-│                                                  │
-│  Spec Parser  →  Tool Generator  →  Cache        │
-│                                                  │
-│  Auth Proxy   →  Executor        →  Audit Log    │
-│                                                  │
-│  Admin Portal (Service Catalog / Test Console)   │
-+─────────────────────────────────────────────────+
-          |
-          |  SOAP / REST / HTTP calls
-          v
-  Backend Services (WSDL · OpenAPI · REST · Apigee · SAP · Mainframe)
-          |
-          v
-    Databases / Legacy Business Logic
-```
+<img src="docs/overview-flow.svg" alt="iMCP Overview Flow" width="100%"/>
 
 1. **Register** a service by providing its WSDL URL, OpenAPI spec URL, or uploading an MCP JSON file.
 2. **iMCP parses** the spec, extracts operations, and generates JSON Schema-typed MCP tool definitions.
@@ -119,6 +98,8 @@ AI Assistant (Claude / Copilot / any MCP client)
 ## Architecture
 
 ### Logical Components
+
+<img src="docs/component-architecture.svg" alt="iMCP Component Architecture" width="100%"/>
 
 ```
 imcp/
@@ -521,6 +502,10 @@ iMCP fetches a token from `token_url` using the `client_credentials` grant, cach
 
 ## API Reference
 
+### Request Flow
+
+<img src="docs/request-flow.svg" alt="iMCP Request Flow" width="100%"/>
+
 ### MCP Protocol Endpoint
 
 ```
@@ -687,12 +672,12 @@ iMCP/
 │   ├── middleware/             # Correlation ID, auth middleware
 │   └── management/commands/   # imcp_health_check management command
 ├── media/imcp_specs/           # Uploaded spec files (auto-cleaned on service delete)
-├── policy_search.mcp.json      # Example: policy search tool (MCP JSON)
-├── claim_search.mcp.json       # Example: claims search tool (MCP JSON)
-├── apigee_policy_search.mcp.json # Example: Apigee-hosted tool with OAuth2
-├── PRD_iMCP_Intelligent_Legacy_Bridge.md
-├── iMCP_Tech_Stack_and_Architecture.md
-├── iMCP_Portal_UI_Design_Doc.md
+├── docs/                       # Architecture SVG diagrams (used in README)
+│   ├── overview-flow.svg
+│   ├── component-architecture.svg
+│   └── request-flow.svg
+├── iMCP_docs.html              # Full interactive documentation with diagrams
+├── .env.example                # Environment variable template
 └── README.md
 ```
 

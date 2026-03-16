@@ -1,0 +1,76 @@
+<svg width="900" height="340" viewBox="0 0 900 340" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="ra" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#6366f1"/>
+    </marker>
+    <marker id="rb" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#06b6d4"/>
+    </marker>
+    <marker id="rc" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#22c55e"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="340" rx="16" fill="#0f1117"/>
+
+  <!-- Swimlane headers -->
+  <rect x="0" y="0" width="900" height="28" rx="6" fill="#1a1d27"/>
+  <text x="80"  y="18" text-anchor="middle" font-size="9" fill="#64748b" font-weight="700" font-family="'Segoe UI',sans-serif">AI CLIENT</text>
+  <text x="250" y="18" text-anchor="middle" font-size="9" fill="#64748b" font-weight="700" font-family="'Segoe UI',sans-serif">AUTH MIDDLEWARE</text>
+  <text x="440" y="18" text-anchor="middle" font-size="9" fill="#64748b" font-weight="700" font-family="'Segoe UI',sans-serif">MCP HANDLER</text>
+  <text x="640" y="18" text-anchor="middle" font-size="9" fill="#64748b" font-weight="700" font-family="'Segoe UI',sans-serif">EXECUTOR</text>
+  <text x="820" y="18" text-anchor="middle" font-size="9" fill="#64748b" font-weight="700" font-family="'Segoe UI',sans-serif">UPSTREAM SERVICE</text>
+
+  <!-- Lifelines -->
+  <line x1="80"  y1="28" x2="80"  y2="330" stroke="#2e3347" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="250" y1="28" x2="250" y2="330" stroke="#2e3347" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="440" y1="28" x2="440" y2="330" stroke="#2e3347" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="640" y1="28" x2="640" y2="330" stroke="#2e3347" stroke-width="1" stroke-dasharray="4,3"/>
+  <line x1="820" y1="28" x2="820" y2="330" stroke="#2e3347" stroke-width="1" stroke-dasharray="4,3"/>
+
+  <!-- Step 1 -->
+  <line x1="80" y1="60" x2="243" y2="60" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ra)"/>
+  <text x="162" y="54" text-anchor="middle" font-size="9" fill="#818cf8" font-family="'Segoe UI',sans-serif">POST /imcp/mcp  tools/call</text>
+
+  <!-- Step 2 -->
+  <rect x="168" y="72" width="164" height="22" rx="5" fill="#22263a" stroke="#2e3347" stroke-width="1"/>
+  <text x="250" y="87" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="'Segoe UI',sans-serif">Validate Bearer token</text>
+
+  <!-- Step 3 -->
+  <line x1="250" y1="100" x2="433" y2="100" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ra)"/>
+  <text x="342" y="94" text-anchor="middle" font-size="9" fill="#818cf8" font-family="'Segoe UI',sans-serif">Authenticated request</text>
+
+  <!-- Step 4 -->
+  <rect x="360" y="112" width="160" height="22" rx="5" fill="#22263a" stroke="#2e3347" stroke-width="1"/>
+  <text x="440" y="127" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="'Segoe UI',sans-serif">Lookup tool from TTLCache</text>
+
+  <!-- Step 5 -->
+  <rect x="360" y="142" width="160" height="22" rx="5" fill="#22263a" stroke="#2e3347" stroke-width="1"/>
+  <text x="440" y="157" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="'Segoe UI',sans-serif">Validate input schema</text>
+
+  <!-- Step 6 -->
+  <line x1="440" y1="170" x2="633" y2="170" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ra)"/>
+  <text x="537" y="164" text-anchor="middle" font-size="9" fill="#818cf8" font-family="'Segoe UI',sans-serif">Execute tool</text>
+
+  <!-- Step 7 -->
+  <rect x="553" y="182" width="174" height="22" rx="5" fill="#22263a" stroke="#2e3347" stroke-width="1"/>
+  <text x="640" y="197" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="'Segoe UI',sans-serif">Build auth headers (decrypt)</text>
+
+  <!-- Step 8 -->
+  <line x1="640" y1="210" x2="813" y2="210" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#rb)"/>
+  <text x="727" y="204" text-anchor="middle" font-size="9" fill="#06b6d4" font-family="'Segoe UI',sans-serif">SOAP / REST HTTP call</text>
+
+  <!-- Step 9 -->
+  <line x1="820" y1="230" x2="647" y2="230" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#rc)"/>
+  <text x="734" y="224" text-anchor="middle" font-size="9" fill="#22c55e" font-family="'Segoe UI',sans-serif">Response (XML / JSON)</text>
+
+  <!-- Step 10 -->
+  <rect x="553" y="242" width="174" height="22" rx="5" fill="#22263a" stroke="#2e3347" stroke-width="1"/>
+  <text x="640" y="257" text-anchor="middle" font-size="9" fill="#94a3b8" font-family="'Segoe UI',sans-serif">Normalize + write audit log</text>
+
+  <!-- Step 11 -->
+  <line x1="640" y1="272" x2="447" y2="272" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#rc)"/>
+  <line x1="440" y1="272" x2="87"  y2="272" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#rc)"/>
+  <text x="260" y="266" text-anchor="middle" font-size="9" fill="#22c55e" font-family="'Segoe UI',sans-serif">MCP tool result (JSON-RPC 2.0)</text>
+</svg>
