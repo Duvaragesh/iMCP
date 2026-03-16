@@ -1,6 +1,21 @@
-# iMCP — Intelligent Legacy Bridge
+<div align="center">
 
-> **Turn any existing backend service into an AI-accessible tool — without rewriting a single line of business logic.**
+<img src="docs/hero.svg" alt="iMCP — Intelligent Legacy Bridge" width="100%"/>
+
+<br/>
+
+<img src="docs/stats.svg" alt="iMCP Stats" width="100%"/>
+
+<br/>
+
+[![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://python.org)
+[![Django](https://img.shields.io/badge/Django-6.x-092E20?logo=django&logoColor=white)](https://djangoproject.com)
+[![MCP](https://img.shields.io/badge/MCP-2024--11--05-6366f1)](https://modelcontextprotocol.io)
+
+</div>
+
+---
 
 iMCP is an **MCP (Model Context Protocol) server** that acts as a universal bridge between AI assistants and your existing backend services — whether they are legacy SOAP/WSDL systems, modern REST APIs, IBM AS400/IBMi platforms, SAP, Apigee-hosted APIs, mainframe services, or any HTTP-callable endpoint. It dynamically discovers operations from service contracts (WSDL, OpenAPI, or a lightweight MCP JSON spec), generates structured tool definitions, and brokers authenticated calls — turning your existing services into live AI tools in under an hour.
 
@@ -25,7 +40,9 @@ Originally built to modernize insurance systems without rewrites, **iMCP is indu
 - [Security Model](#security-model)
 - [Configuration](#configuration)
 - [Connecting AI Assistants](#connecting-ai-assistants)
+- [Representative Use Cases](#representative-use-cases)
 - [Project Structure](#project-structure)
+- [License](#license)
 
 ---
 
@@ -35,7 +52,7 @@ Organizations across every industry run on battle-tested legacy systems — IBMi
 
 Whether you are in insurance, banking, healthcare, logistics, retail, or government, the challenge is the same: valuable domain knowledge is locked inside systems that cannot be queried conversationally. The traditional path to fixing this means multi-year rewrites costing millions. iMCP offers a different answer:
 
-| Traditional Approach | iMCP Approach |
+| ❌ Traditional Approach | ✅ iMCP Approach |
 |---|---|
 | 12–18 month full rewrite | Live in < 1 hour per service |
 | $2M–$5M+ investment | Minimal integration cost |
@@ -44,10 +61,13 @@ Whether you are in insurance, banking, healthcare, logistics, retail, or governm
 | No AI-native interface | Native MCP tools for any AI assistant |
 
 **Real business impact (targets):**
-- 30–40% reduction in support ticket volume (6 months)
-- 50% faster developer integration (3 months)
-- 60% reduction in time-to-market for new digital initiatives
-- > $2M cost savings vs. rewrite in Year 1
+
+| Metric | Target | Timeframe |
+|---|---|---|
+| Support ticket reduction | 30–40% | 6 months |
+| Faster developer integration | 50% | 3 months |
+| Time-to-market for new initiatives | 60% reduction | — |
+| Cost savings vs. rewrite | > $2M | Year 1 |
 
 ---
 
@@ -72,14 +92,16 @@ iMCP is built for any organization that has existing backend services — regard
 
 iMCP works with any system that exposes a WSDL, OpenAPI spec, or a callable HTTP endpoint:
 
-- **IBM AS400 / IBMi** — SOAP/WSDL services from RPG and COBOL programs
-- **SAP** — BAPI/RFC services exposed via SAP Web Services
-- **Mainframe** — CICS, IMS transaction services wrapped in WSDL or REST
-- **Oracle / PeopleSoft / Siebel** — enterprise service bus and web service layers
-- **Modern REST APIs** — any OpenAPI 2.x / 3.x documented service
-- **API Gateways** — Apigee, AWS API Gateway, Azure API Management, Kong
-- **Internal microservices** — any HTTP service you can describe with MCP JSON
-- **On-premise SOAP services** — any WS-* or basic SOAP/HTTP endpoint
+| System | Integration |
+|---|---|
+| **IBM AS400 / IBMi** | SOAP/WSDL services from RPG and COBOL programs |
+| **SAP** | BAPI/RFC services exposed via SAP Web Services |
+| **Mainframe** | CICS, IMS transaction services wrapped in WSDL or REST |
+| **Oracle / PeopleSoft / Siebel** | Enterprise service bus and web service layers |
+| **Modern REST APIs** | Any OpenAPI 2.x / 3.x documented service |
+| **API Gateways** | Apigee, AWS API Gateway, Azure API Management, Kong |
+| **Internal microservices** | Any HTTP service you can describe with MCP JSON |
+| **On-premise SOAP services** | Any WS-* or basic SOAP/HTTP endpoint |
 
 ---
 
@@ -87,19 +109,25 @@ iMCP works with any system that exposes a WSDL, OpenAPI spec, or a callable HTTP
 
 <img src="docs/overview-flow.svg" alt="iMCP Overview Flow" width="100%"/>
 
-1. **Register** a service by providing its WSDL URL, OpenAPI spec URL, or uploading an MCP JSON file.
-2. **iMCP parses** the spec, extracts operations, and generates JSON Schema-typed MCP tool definitions.
-3. **Tools are cached** in the database and served instantly to any connected AI client.
-4. **When an AI calls a tool**, iMCP authenticates, validates inputs, calls the upstream service, and returns the normalized result.
-5. **Everything is logged** — every tool call produces a structured audit event with correlation ID, actor, latency, and outcome.
+<br/>
+
+| Step | What Happens |
+|---|---|
+| **1. Register** | Provide a WSDL URL, OpenAPI spec URL, or upload an MCP JSON file. No backend changes needed. |
+| **2. Parse & Generate** | iMCP parses the spec, extracts operations, converts XSD/JSON Schema types, and generates strongly-typed MCP tool definitions — one tool per operation. |
+| **3. Cache & Serve** | Generated tools are stored in the database and held in a TTLCache. Any connected AI client receives the full tool list instantly via `tools/list`. |
+| **4. AI Calls a Tool** | When the AI issues a `tools/call`, iMCP validates inputs, injects authentication headers, calls the upstream service (SOAP or REST), and returns the normalized result. |
+| **5. Audit & Log** | Every call produces a structured audit event: correlation ID, actor, tool name, latency, and a sanitized (secrets-redacted) payload. |
 
 ---
 
 ## Architecture
 
-### Logical Components
+### Component Diagram
 
 <img src="docs/component-architecture.svg" alt="iMCP Component Architecture" width="100%"/>
+
+### File Structure
 
 ```
 imcp/
@@ -136,63 +164,89 @@ imcp/
 
 ### Dual Execution Paths
 
-A design principle of iMCP is **execution parity**: the Admin Portal's Test Console and the live MCP endpoint both run through the same internal execution handler. What you test in the portal is exactly what an AI assistant will call in production — no surprises.
+> **Execution parity:** The Admin Portal's Test Console and the live MCP endpoint both run through the same internal execution handler. What you test in the portal is exactly what an AI assistant will call in production — no surprises.
 
 ---
 
 ## Key Features
 
-### Spec-Driven Tool Generation
-- **WSDL/SOAP**: Parses SOAP services from any platform — IBM AS400/IBMi, SAP, Oracle, mainframe, or any enterprise system that exposes a WSDL. Extracts operations, input/output message types, and converts XSD complex types to JSON Schema with full nested object support.
-- **OpenAPI 2.x / 3.x**: Full spec parsing via `prance` with `$ref` resolution. Works with any REST API — cloud, on-premise, or API gateway hosted. Generates one tool per operation with path, query, and request body parameter schemas.
-- **MCP JSON**: A lightweight custom format for wrapping any HTTP endpoint directly — no full WSDL or OpenAPI spec required. Ideal for simple REST services, internal microservices, API gateway routes (Apigee, Kong, AWS API Gateway), and quick prototyping.
+<details>
+<summary><strong>Spec-Driven Tool Generation</strong></summary>
 
-### Authentication Proxy
-iMCP handles all outbound authentication transparently. Four auth types are supported per service:
+| Spec Type | What iMCP Does |
+|---|---|
+| **WSDL/SOAP** | Parses SOAP services from IBM AS400/IBMi, SAP, Oracle, mainframe. Extracts operations and converts XSD complex types to JSON Schema with full nested object support. |
+| **OpenAPI 2.x / 3.x** | Full spec parsing via `prance` with `$ref` resolution. Generates one tool per operation with path, query, and request body schemas. Preserves enum, min/max, pattern constraints. |
+| **MCP JSON** | Lightweight custom format for wrapping any HTTP endpoint directly — no full WSDL or OpenAPI spec required. Ideal for Apigee, Kong, AWS API Gateway routes and quick prototyping. |
 
-| Type | How it works |
+</details>
+
+<details>
+<summary><strong>Authentication Proxy</strong></summary>
+
+iMCP handles all outbound authentication transparently. All credentials are **Fernet-encrypted at rest** (AES-128-CBC) and never appear in logs or API responses.
+
+| Auth Type | How it Works |
 |---|---|
 | **Bearer Token** | Static token injected as `Authorization: Bearer ...` |
 | **Basic Auth** | Username + password encoded as `Authorization: Basic ...` |
 | **Custom Headers** | Any arbitrary headers (e.g., `X-API-Key`, `X-Tenant`) |
-| **OAuth2 Client Credentials** | Fetches a token from a token endpoint using `client_id` / `client_secret`, caches it for ~58 minutes, and refreshes automatically |
+| **OAuth2 Client Credentials** | Fetches token from a token endpoint, caches for ~58 min, auto-refreshes |
 
-All credentials are **Fernet-encrypted at rest** (AES-128-CBC). They are never returned by any API endpoint and are redacted from all logs.
+</details>
 
-### TTL Caching
-- Tool definitions are cached in the database and in a module-level `TTLCache`.
-- Cache hits are tracked and displayed on the Status page (hit rate, size, TTL).
-- Per-service cache invalidation is available from both the portal and the API.
-- OAuth2 tokens are cached separately with a 3,500s TTL (safely under the typical 3,600s token lifetime).
+<details>
+<summary><strong>TTL Caching</strong></summary>
 
-### Admin Portal
-A full-featured management UI built with Django + HTMX + Tailwind CSS:
+- Tool definitions are cached in the database and in a module-level `TTLCache`
+- Cache hits tracked on the Status page (hit rate, size, TTL, miss count)
+- Per-service cache invalidation available from both portal and API
+- OAuth2 tokens cached separately with a 3,500s TTL (safely under the typical 3,600s token lifetime)
 
-- **Service Catalog** — Add, edit, enable/disable services. Upload spec files directly or provide a URL. Supports per-service operation allowlists and denylists.
-- **Tool Registry** — Browse all generated tools by service. Inspect input schemas. Force-refresh individual services.
-- **Test Console** — Select any tool, fill in arguments, execute it against the real upstream service, and inspect the raw request/response with secrets redacted.
-- **Token Manager** — Create, revoke, and manage API keys for portal and MCP access.
-- **Status Page** — Live adapter health, per-service reachability, cache statistics, and recent error log.
+</details>
 
-### Audit Logging
-Every tool call, service change, and authentication event produces a structured audit record containing:
-- `correlation_id` — unique per request, included in all upstream calls
-- `actor` — API key identity
-- `action` — what was done
-- `service_id` / `tool_name`
-- `status` — success / failure
-- `latency_ms`
-- `details` — sanitized payload (secrets redacted)
+<details>
+<summary><strong>Admin Portal</strong></summary>
 
-### Operation Allow/Deny Control
-Each service supports JSON-based allowlists and denylists:
+A full-featured management UI built with **Django + HTMX + Tailwind CSS**:
+
+| Section | Purpose |
+|---|---|
+| **Service Catalog** | Add, edit, enable/disable services. Upload spec files or provide URLs. Per-service operation allowlists and denylists. |
+| **Tool Registry** | Browse all generated tools by service. Inspect input schemas. Force-refresh individual services. |
+| **Test Console** | Select any tool, fill in arguments, execute against the real upstream, inspect raw request/response (credentials redacted). |
+| **Token Manager** | Create, revoke, and manage API keys for portal and MCP access. |
+| **Status Page** | Live adapter health, per-service reachability with latency, cache statistics, recent error log. |
+
+</details>
+
+<details>
+<summary><strong>Audit Logging</strong></summary>
+
+Every tool call, service change, and authentication event produces a structured audit record:
+
+| Field | Description |
+|---|---|
+| `correlation_id` | Unique per request, propagated to all upstream calls |
+| `actor` | API key identity |
+| `action` | What was done |
+| `service_id` / `tool_name` | Which service and tool |
+| `status` | `success` / `failure` |
+| `latency_ms` | End-to-end call time |
+| `details` | Sanitized payload (all secrets redacted) |
+
+</details>
+
+<details>
+<summary><strong>Operation Allow/Deny Control</strong></summary>
+
+Each service supports JSON-based allowlists and denylists. Operations outside the allowlist are **invisible** to AI clients at `tools/list` — they cannot be discovered or called even if they exist in the spec.
+
 ```json
 { "operations": ["searchPolicy", "getCustomer"] }
 ```
-Operations not in the allowlist (or in the denylist) are invisible to AI clients and cannot be called — even if they exist in the spec.
 
-### MCP JSON Template Download
-When adding or editing a service with spec type `MCP JSON`, the portal offers a one-click **Download JSON template** link. The downloaded file contains a fully annotated sample with all required fields, making it easy to define new tools without needing to generate spec files from an AI assistant.
+</details>
 
 ---
 
@@ -208,7 +262,7 @@ When adding or editing a service with spec type `MCP JSON`, the portal offers a 
 | **OpenAPI parsing** | prance + openapi-spec-validator |
 | **Caching** | cachetools TTLCache |
 | **Encryption** | cryptography (Fernet / AES-128-CBC) |
-| **Database** | SQLite (MVP) — drop-in swap to PostgreSQL for production |
+| **Database** | SQLite (MVP) → PostgreSQL (production, drop-in swap) |
 | **Auth tokens** | python-jose (JWT) |
 | **Testing** | pytest + pytest-asyncio + pytest-cov |
 
@@ -217,15 +271,17 @@ When adding or editing a service with spec type `MCP JSON`, the portal offers a 
 ## Quick Start
 
 ### Prerequisites
+
 - Python 3.11+
 - Git
 
-### 1. Clone and set up the environment
+### 1 — Clone and set up the environment
 
 ```bash
-git clone https://github.com/your-org/imcp.git
+git clone https://github.com/duvaragesh/iMCP.git
 cd iMCP
 python -m venv .venv
+
 # Windows
 .venv\Scripts\activate
 # macOS / Linux
@@ -234,15 +290,13 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Configure environment variables
-
-Copy the example file and edit it:
+### 2 — Configure environment variables
 
 ```bash
 cp .env.example .env
 ```
 
-`.env` reference (all variables):
+Edit `.env` — full variable reference:
 
 ```env
 # Application
@@ -263,7 +317,7 @@ RATE_LIMIT_PER_MINUTE=100
 # Authentication
 JWT_SECRET=change-me-in-production-use-strong-secret   # Also used for Fernet encryption
 JWT_ALGORITHM=HS256
-# JWKS_URL=https://your-auth-provider.com/.well-known/jwks.json  # Optional: external JWKS
+# JWKS_URL=https://your-auth-provider.com/.well-known/jwks.json
 
 # CORS
 CORS_ORIGINS=["http://localhost:3000","http://localhost:8000"]
@@ -277,7 +331,7 @@ REDACTION_PATTERNS=["password","token","secret","authorization","bearer","ssn","
 
 # Observability (OpenTelemetry)
 OTEL_ENABLED=false
-# OTEL_ENDPOINT=http://localhost:4318   # Uncomment to enable tracing
+# OTEL_ENDPOINT=http://localhost:4318
 
 # Health Check
 HEALTH_CHECK_INTERVAL_MINUTES=5
@@ -285,13 +339,13 @@ HEALTH_CHECK_INTERVAL_MINUTES=5
 
 > **Important:** `JWT_SECRET` is also used to derive the Fernet encryption key for stored service credentials. Use a strong random value and keep it consistent across restarts — changing it will invalidate all stored credentials.
 
-### 3. Initialize the database
+### 3 — Initialize the database
 
 ```bash
 python manage.py migrate
 ```
 
-### 4. Create a superuser (admin account)
+### 4 — Create a superuser (admin account)
 
 ```bash
 python manage.py createsuperuser
@@ -307,12 +361,12 @@ Password (again): ••••••••
 Superuser created successfully.
 ```
 
-> This Django superuser account is used to log in to the Admin Portal at `/admin/login/`. It is separate from iMCP API keys.
+> This Django superuser is used to log in to the Admin Portal at `/admin/login/`. It is separate from iMCP API keys.
 
-### 5. Generate an iMCP API Key
+### 5 — Generate an iMCP API Key
 
-Once logged in to the portal, go to **Token Manager** and create an API key. This key is used to:
-- Authenticate calls to the **MCP endpoint** (`/imcp/mcp`) from AI clients (Claude, Copilot, etc.)
+Log in to the portal, go to **Token Manager**, and create an API key. This key is used to:
+- Authenticate AI client calls to the **MCP endpoint** (`/imcp/mcp`)
 - Authenticate calls to the **Admin REST API** (`/imcp/admin/...`)
 
 ```
@@ -321,9 +375,9 @@ Description: Used by Claude Code MCP client
 Roles:       admin
 ```
 
-Copy the full key shown — **it is only displayed once**.
+> Copy the full key shown — **it is only displayed once**.
 
-### 6. Start the server
+### 6 — Start the server
 
 ```bash
 python manage.py runserver
@@ -331,15 +385,12 @@ python manage.py runserver
 uvicorn config.asgi:application --reload
 ```
 
-### 7. Open the portal
+### 7 — Open the portal
 
-Navigate to `http://localhost:8000/admin/login/` and log in with the superuser credentials created in step 4.
+- Login: `http://localhost:8000/admin/login/`
+- Portal: `http://localhost:8000/imcp/portal/`
 
-The portal home is at `http://localhost:8000/imcp/portal/`.
-
-### 8. Connect an AI client
-
-Use the API key from step 5 to connect Claude Code or VS Code:
+### 8 — Connect an AI client
 
 ```bash
 # Claude Code CLI
@@ -356,61 +407,116 @@ Run `/mcp` inside Claude Code to confirm `iMCP` is listed and tools are availabl
 
 ### Adding Your First Service
 
-1. Go to **Services** in the sidebar.
-2. Click **+ Add Service**.
+1. Go to **Services** in the sidebar
+2. Click **+ Add Service**
 3. Fill in:
-   - **Name** — a unique identifier (e.g., `Policy Search`)
-   - **Spec Type** — `WSDL`, `OpenAPI`, or `MCP JSON`
-   - **Spec Source** — provide a URL or upload a file directly
-   - **Category** — e.g., `Policy`, `Claims`, `Underwriting`
-   - **Auth Type** — select the authentication method and enter credentials
-4. Click **Save**. Tools are generated and cached automatically.
+
+| Field | Description | Example |
+|---|---|---|
+| **Name** | Unique identifier | `Policy Search` |
+| **Spec Type** | Format of the spec | `WSDL`, `OpenAPI`, or `MCP JSON` |
+| **Spec Source** | URL or file upload | `http://ibmi-host/ws/PolicySearch?wsdl` |
+| **Category** | Grouping label | `Policy`, `Claims`, `Underwriting` |
+| **Auth Type** | Authentication method | `Basic`, `Bearer`, `OAuth2` |
+
+4. Click **Save** — tools are generated and cached automatically
 
 ### Verifying Generated Tools
 
-1. Go to **Tools** in the sidebar.
-2. Select your service from the filter or scroll the list.
-3. Each tool shows its name, description, input schema, and cache status.
-4. Click **Refresh** on any service to re-parse its spec and regenerate tools.
+1. Go to **Tools** in the sidebar
+2. Select your service from the filter
+3. Each tool shows its name, description, input schema, and cache status
+4. Click **Refresh** on any service to re-parse its spec and regenerate tools
 
 ### Testing a Tool
 
-1. Go to **Test Console** in the sidebar.
-2. Select a tool from the dropdown.
-3. Fill in the arguments (JSON editor with schema hints).
-4. Click **Run**. Results show:
+1. Go to **Test Console** in the sidebar
+2. Select a tool from the dropdown
+3. Fill in the arguments (JSON editor with schema hints)
+4. Click **Run** — results show:
    - Normalized response
-   - Raw upstream HTTP request/response (with credentials redacted)
+   - Raw upstream HTTP request/response (credentials redacted)
    - Correlation ID and latency
 
 ### Monitoring Health
 
 The **Status** page shows:
-- Adapter health (up/down)
-- Per-service reachability with latency
-- Cache size, hit rate, TTL, and miss count
-- Recent error log entries
+
+| Metric | Description |
+|---|---|
+| Adapter health | Up / down per service |
+| Service reachability | Live latency probes |
+| Cache statistics | Hit rate, size, TTL, miss count |
+| Error log | Recent failures with correlation IDs |
 
 ---
 
 ## Supported Spec Types
 
-### WSDL (SOAP)
+<details>
+<summary><strong>WSDL / SOAP</strong> — IBM AS400, SAP, Oracle, Mainframe</summary>
+
 Point iMCP at any WSDL URL or upload a `.wsdl` / `.xml` file. iMCP will:
+
 - Parse all services, ports, and operations
 - Extract input message types and convert XSD to JSON Schema
 - Handle nested complex types (policies, claims, coverage objects)
 - Apply operation allowlists/denylists
 
-### OpenAPI (REST)
-Supply an OpenAPI 2.x or 3.x spec as a URL or upload a `.yaml` / `.yml` / `.json` file. iMCP will:
-- Resolve all `$ref` references
-- Generate one tool per path+method combination
+```bash
+# Register via API
+POST /imcp/admin/services
+{
+  "name": "PolicySearch",
+  "spec_type": "wsdl",
+  "spec_url": "http://ibmi-host/wsservices/PolicySearch?wsdl",
+  "auth_type": "basic",
+  "auth_config": { "username": "svcuser", "password": "••••" }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>OpenAPI 2.x / 3.x</strong> — REST APIs, API Gateways</summary>
+
+Supply an OpenAPI spec as a URL or upload a `.yaml` / `.yml` / `.json` file. iMCP will:
+
+- Resolve all `$ref` references via `prance`
+- Generate one tool per path + method combination
 - Map path, query, and request body parameters to the tool `inputSchema`
 - Preserve validation constraints (enums, min/max, patterns)
 
-### MCP JSON
-A lightweight custom format for wrapping simple REST or Apigee endpoints directly — no full OpenAPI spec required. Upload a `.json` file or provide a URL.
+```bash
+POST /imcp/admin/services
+{
+  "name": "ClaimsAPI",
+  "spec_type": "openapi",
+  "spec_url": "https://api.internal/claims/openapi.yaml",
+  "auth_type": "oauth2",
+  "auth_config": {
+    "token_url": "https://auth.example.com/token",
+    "client_id": "imcp-client",
+    "client_secret": "••••",
+    "scope": "read:claims"
+  }
+}
+```
+
+</details>
+
+<details>
+<summary><strong>MCP JSON</strong> — Simple REST, Apigee, Internal microservices</summary>
+
+A lightweight custom format for wrapping any HTTP endpoint directly — no full WSDL or OpenAPI spec required. Ideal for quick prototyping and simple API gateway routes.
+
+- No spec file needed — describe tools directly in JSON
+- Supports GET / POST / PUT / DELETE
+- Query params and request body mapping
+- Default values for optional parameters
+- One-click template download from the portal
+
+</details>
 
 ---
 
@@ -424,7 +530,7 @@ A lightweight custom format for wrapping simple REST or Apigee endpoints directl
   "tools": [
     {
       "name": "toolName",
-      "description": "Describe what this tool does. This text is shown to the AI when selecting tools.",
+      "description": "Describe what this tool does — this text is shown to the AI when selecting tools.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -463,8 +569,8 @@ A lightweight custom format for wrapping simple REST or Apigee endpoints directl
 | `tools[].inputSchema.properties[*].default` | No | Default value applied if argument is omitted |
 | `tools[].endpoint.method` | Yes | HTTP method: `GET`, `POST`, `PUT`, `DELETE` |
 | `tools[].endpoint.baseUrl` | Yes | Base URL of the upstream API |
-| `tools[].endpoint.path` | Yes | Path appended to baseUrl |
-| `tools[].endpoint.queryParams` | No | List of parameter names sent as query string |
+| `tools[].endpoint.path` | Yes | Path appended to `baseUrl` |
+| `tools[].endpoint.queryParams` | No | Parameter names sent as query string |
 
 > **Tip:** Click **Download JSON template** in the Add/Edit Service modal (when MCP JSON is selected) to get a pre-filled template file.
 
@@ -472,22 +578,42 @@ A lightweight custom format for wrapping simple REST or Apigee endpoints directl
 
 ## Authentication Types
 
-### Bearer Token
+<details>
+<summary><strong>Bearer Token</strong> — Static token</summary>
+
 ```json
 { "token": "your-static-bearer-token" }
 ```
 
-### Basic Auth
+Injected as `Authorization: Bearer <token>` on every upstream call.
+
+</details>
+
+<details>
+<summary><strong>Basic Auth</strong> — Username + Password</summary>
+
 ```json
 { "username": "user", "password": "pass" }
 ```
 
-### Custom Headers
+Encoded as `Authorization: Basic <base64>` on every request.
+
+</details>
+
+<details>
+<summary><strong>Custom Headers</strong> — Arbitrary headers</summary>
+
 ```json
 { "headers": { "X-API-Key": "abc123", "X-Tenant": "acme-corp" } }
 ```
 
-### OAuth2 Client Credentials
+Any headers your backend requires — `X-API-Key`, `X-Tenant`, proprietary auth headers, etc.
+
+</details>
+
+<details>
+<summary><strong>OAuth2 Client Credentials</strong> — Auto-refreshing token</summary>
+
 ```json
 {
   "token_url": "https://auth.example.com/oauth/token",
@@ -496,7 +622,20 @@ A lightweight custom format for wrapping simple REST or Apigee endpoints directl
   "scope": "read:policies"
 }
 ```
-iMCP fetches a token from `token_url` using the `client_credentials` grant, caches it for ~58 minutes, and automatically refreshes it — completely transparent to the AI caller.
+
+iMCP fetches a token from `token_url` using the `client_credentials` grant, **caches it for ~58 minutes**, and automatically refreshes it — completely transparent to the AI caller.
+
+**OAuth2 token flow:**
+
+```
+iMCP Executor → oauth.py (cache miss?) → Token Endpoint
+                     ↑                        ↓
+               Token Cache ←────────── access_token
+                     ↓
+         Authorization: Bearer … → Upstream Service
+```
+
+</details>
 
 ---
 
@@ -515,11 +654,13 @@ Authorization: Bearer <token>
 ```
 
 **List tools:**
+
 ```json
 { "jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {} }
 ```
 
 **Call a tool:**
+
 ```json
 {
   "jsonrpc": "2.0",
@@ -534,11 +675,11 @@ Authorization: Bearer <token>
 
 ### REST Convenience Endpoints
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/imcp/health` | Health check — no auth required |
-| `POST` | `/imcp/mcp/tools/list` | List all available tools |
-| `POST` | `/imcp/mcp/tools/call` | Execute a tool |
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `GET` | `/imcp/health` | None | Health check |
+| `POST` | `/imcp/mcp/tools/list` | Bearer | List all available tools |
+| `POST` | `/imcp/mcp/tools/call` | Bearer | Execute a tool |
 
 ### Admin API
 
@@ -546,11 +687,11 @@ All admin endpoints require `Authorization: Bearer <token>`.
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/imcp/admin/services` | List services (filter: category, spec_type, enabled) |
+| `GET` | `/imcp/admin/services` | List services (filter: `category`, `spec_type`, `enabled`) |
 | `POST` | `/imcp/admin/services` | Create a service (JSON body or multipart file upload) |
 | `GET` | `/imcp/admin/services/<id>` | Get a single service |
-| `PUT` | `/imcp/admin/services/<id>` | Update a service (JSON body or multipart file upload) |
-| `DELETE` | `/imcp/admin/services/<id>` | Disable (soft) or hard-delete a service |
+| `PUT` | `/imcp/admin/services/<id>` | Update a service |
+| `DELETE` | `/imcp/admin/services/<id>` | Disable (soft) or hard-delete |
 | `POST` | `/imcp/admin/services/<id>/discover-operations` | Discover operations from the spec |
 | `GET` | `/imcp/admin/tools` | List cached tools for a service |
 | `POST` | `/imcp/admin/tools/refresh` | Regenerate tools for a service |
@@ -564,26 +705,27 @@ All admin endpoints require `Authorization: Bearer <token>`.
 
 ## Security Model
 
-### Credential Storage
-Service credentials (tokens, passwords, OAuth2 secrets) are **Fernet-encrypted at rest** using a key derived from Django's `SECRET_KEY` via SHA-256. The encrypted blob is stored in the database. Credentials are:
-- Never returned by any GET API response
-- Never written to logs (redaction patterns match common secret field names)
-- Decrypted only in memory at call time
+| Layer | Mechanism |
+|---|---|
+| **Credential storage** | Fernet AES-128-CBC encryption using a key derived from `JWT_SECRET` via SHA-256. Credentials decrypted only in memory at call time — never returned by GET endpoints. |
+| **PII redaction** | Configurable patterns scrub `Authorization`, `token`, `password`, `client_secret`, `credentials`, and custom PII fields from all audit records. |
+| **Operation governance** | Per-service allowlists and denylists. Operations outside the allowlist are invisible at `tools/list` — undiscoverable and uncallable. |
+| **API key auth** | Keys stored as hashed values only. Never returned by any API. Instant revocation via Token Manager. |
+| **Audit trail** | Every call logged with `correlation_id`, actor, action, service, tool, status, latency, and redacted payload. |
+| **Transport** | Upstream calls use `httpx` with TLS. Portal traffic should sit behind Nginx TLS termination. |
+| **Rate limiting** | Configurable per-minute limit per client (in-memory; Redis-backed in production). |
 
-### Redaction
-The audit and logging layer applies configurable redaction patterns to scrub:
-- `Authorization` headers
-- Fields named `token`, `password`, `client_secret`, `credentials`
-- Any field matching the configured PII patterns
+### Credential Lifecycle
 
-### Transport
-All upstream service calls use `httpx` with configurable TLS settings. Internal portal and API traffic should be placed behind TLS termination (Nginx / API gateway).
-
-### Operation Governance
-Per-service allowlists and denylists enforce which operations can be invoked. Operations outside the allowlist are invisible to AI clients at the `tools/list` level — they cannot be discovered or called.
-
-### API Key Authentication
-All portal and MCP endpoints require a bearer token. API keys are stored as hashed values and can be created, listed, and revoked from the Token Manager page.
+```
+Register service (plaintext creds)
+         ↓
+  Fernet encrypt → store in DB
+         ↓
+  At call time: decrypt in memory → build auth header → call upstream
+         ↓
+  Discard decrypted value — never logged, never returned
+```
 
 ---
 
@@ -596,35 +738,35 @@ All settings are controlled via `.env` (copy from `.env.example`):
 | `APP_NAME` | `iMCP` | Application name shown in portal |
 | `APP_VERSION` | `0.1.0` | Version string |
 | `DEBUG` | `false` | Set to `false` in production |
-| `DATABASE_URL` | `sqlite:///./imcp.db` | Database connection string — swap to `postgres://...` for production |
-| `CACHE_TTL_SECONDS` | `3600` | How long tool definitions are cached (seconds) |
+| `DATABASE_URL` | `sqlite:///./imcp.db` | Database — swap to `postgres://...` for production |
+| `CACHE_TTL_SECONDS` | `3600` | Tool definition cache TTL in seconds |
 | `CACHE_MAX_SIZE` | `1000` | Max cached tool sets |
 | `RATE_LIMIT_PER_MINUTE` | `100` | Max requests per minute per client |
-| `JWT_SECRET` | *(required)* | Secret for JWT signing **and** Fernet credential encryption — keep stable |
+| `JWT_SECRET` | *(required)* | JWT signing key **and** Fernet encryption source — keep stable |
 | `JWT_ALGORITHM` | `HS256` | JWT signing algorithm |
-| `JWKS_URL` | *(optional)* | External JWKS URL for validating tokens from an identity provider |
+| `JWKS_URL` | *(optional)* | External JWKS URL for identity provider token validation |
 | `CORS_ORIGINS` | `["http://localhost:8000"]` | Allowed CORS origins (JSON array) |
 | `LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 | `LOG_FORMAT` | `json` | Log output format |
-| `REDACTION_PATTERNS` | see `.env.example` | JSON array of field names scrubbed from all audit logs |
+| `REDACTION_PATTERNS` | see `.env.example` | JSON array of field names scrubbed from audit logs |
 | `OTEL_ENABLED` | `false` | Enable OpenTelemetry tracing |
 | `OTEL_ENDPOINT` | *(optional)* | OTLP endpoint, e.g. `http://localhost:4318` |
 | `HEALTH_CHECK_INTERVAL_MINUTES` | `5` | How often upstream reachability checks run |
 
 ### Scaling to Production
 
-| Component | MVP | Production |
+| Component | Development | Production |
 |---|---|---|
 | Database | SQLite | PostgreSQL |
 | Cache | In-memory TTLCache | Redis |
 | Deployment | Single process | 2+ replicas behind Nginx |
-| Rate limiting | In-memory (slowapi) | Redis-backed |
+| Rate limiting | In-memory | Redis-backed |
 
 ---
 
 ## Connecting AI Assistants
 
-### Claude (Claude Code CLI)
+### Claude Code CLI
 
 ```bash
 claude mcp add --transport http iMCP http://localhost:8000/imcp/mcp \
@@ -632,11 +774,12 @@ claude mcp add --transport http iMCP http://localhost:8000/imcp/mcp \
   --scope project
 ```
 
-This creates a `.mcp.json` in your project directory. Run `/mcp` in Claude Code to confirm `iMCP` is listed and tools are available.
+Run `/mcp` in Claude Code to confirm `iMCP` is listed and tools are available.
 
 ### VS Code (MCP Extension)
 
 Add to `.vscode/mcp.json`:
+
 ```json
 {
   "servers": {
@@ -657,6 +800,19 @@ iMCP implements the **MCP JSON-RPC 2.0 protocol** (`protocol version: 2024-11-05
 
 ---
 
+## Representative Use Cases
+
+| Industry | Prompt | What iMCP Does |
+|---|---|---|
+| **Insurance** | *"Show all active policies for customer ID 12345."* | AI selects `searchPolicy`, calls IBMi SOAP service, returns structured policy list |
+| **Insurance** | *"Show pending claims over $10,000 from the last 30 days."* | AI calls `searchClaim` with filters, reasons over structured results |
+| **Banking** | *"Current balance and transactions for account A-98765?"* | Calls core banking SOAP service, normalizes XML response |
+| **Healthcare** | *"Is patient P-00123 eligible for the scheduled procedure?"* | Calls `checkEligibility`, legacy EHR responds with coverage details |
+| **Logistics** | *"Where is order ORD-20240815 and ETA?"* | Calls REST logistics API with Bearer token, returns shipment status |
+| **Retail** | *"Product details for SKU-4892."* | iMCP auto-obtains OAuth2 token, calls Apigee-hosted catalog API |
+
+---
+
 ## Project Structure
 
 ```
@@ -670,59 +826,38 @@ iMCP/
 │   ├── templates/imcp/         # HTMX + Tailwind portal templates
 │   ├── migrations/             # Database migrations
 │   ├── middleware/             # Correlation ID, auth middleware
-│   └── management/commands/   # imcp_health_check management command
+│   └── management/commands/    # imcp_health_check management command
+├── config/                     # Django settings, urls, wsgi
 ├── media/imcp_specs/           # Uploaded spec files (auto-cleaned on service delete)
-├── docs/                       # Architecture SVG diagrams (used in README)
+├── docs/                       # Architecture SVG diagrams
+│   ├── hero.svg
+│   ├── stats.svg
 │   ├── overview-flow.svg
 │   ├── component-architecture.svg
 │   └── request-flow.svg
-├── iMCP_docs.html              # Full interactive documentation with diagrams
+├── iMCP_docs.html              # Full interactive documentation
 ├── .env.example                # Environment variable template
+├── manage.py                   # Django management script
+├── pyproject.toml              # Project dependencies
 └── README.md
 ```
 
 ---
 
-## Representative Use Cases
-
-**Insurance — Policy inquiry**
-> "Show all active policies for customer ID 12345."
-
-The AI selects the `searchPolicy` tool, executes it with the customer ID, and presents the results conversationally.
-
-**Insurance — Claims triage**
-> "Show me all pending claims over $10,000 from the last 30 days."
-
-The AI calls the `searchClaim` tool with filters, then reasons over the structured results to surface the most urgent items.
-
-**Banking — Account overview**
-> "What is the current balance and recent transaction history for account A-98765?"
-
-iMCP calls the core banking SOAP service, normalizes the XML response, and hands structured data to the AI.
-
-**Healthcare — Eligibility check**
-> "Is patient P-00123 eligible for the scheduled procedure under their current plan?"
-
-The AI calls `checkEligibility` through iMCP. The legacy system responds with coverage details; the AI explains them in plain language.
-
-**Logistics — Shipment tracking**
-> "Where is order ORD-20240815 and what is the estimated delivery date?"
-
-iMCP calls the logistics REST API using a Bearer token, returns the shipment status, and the AI provides a plain-English update.
-
-**API gateway integration (OAuth2)**
-> "Look up the product record for SKU-4892 in the central catalog."
-
-iMCP automatically obtains an OAuth2 token from the configured token endpoint, calls the API gateway-hosted endpoint, and returns the result — the AI caller never handles authentication directly.
-
----
-
 ## License
 
-This project is licensed under the **Business Source License 1.1 (BUSL-1.1)**.
+<div align="center">
 
-- **Free to use** for non-production, evaluation, development, and internal business operations.
-- **Not permitted** to offer as a hosted/managed commercial service or competing product without a commercial license.
-- **Converts to Apache 2.0** automatically on **2029-03-16**.
+**Business Source License 1.1 (BUSL-1.1)**
+
+Copyright © 2025 Duvaragesh Kannan
+
+</div>
+
+| | |
+|---|---|
+| **Free to use** | Non-production, evaluation, development, and internal business operations |
+| **Not permitted** | Offering as a hosted/managed commercial service or competing product |
+| **Converts to** | Apache 2.0 automatically on **2029-03-16** |
 
 See [LICENSE](LICENSE) for full terms. For commercial licensing enquiries, open an issue on GitHub.
