@@ -1,0 +1,66 @@
+{% extends "imcp/base.html" %}
+
+{% block title %}Dashboard — iMCP{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Metric cards -->
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div class="card p-4">
+    <p class="text-xs text-gray-500 uppercase tracking-wide">Services</p>
+    <p class="text-3xl font-bold text-primary mt-1">{{ service_count }}</p>
+  </div>
+  <div class="card p-4">
+    <p class="text-xs text-gray-500 uppercase tracking-wide">Tools Generated</p>
+    <p class="text-3xl font-bold text-primary mt-1">{{ tool_count }}</p>
+  </div>
+  <div class="card p-4">
+    <p class="text-xs text-gray-500 uppercase tracking-wide">Cache Hit Rate</p>
+    <p class="text-3xl font-bold text-primary mt-1">{{ cache_hit_rate }}%</p>
+  </div>
+  <div class="card p-4">
+    <p class="text-xs text-gray-500 uppercase tracking-wide">Errors (24h)</p>
+    <p class="text-3xl font-bold {% if error_count > 0 %}text-red-600{% else %}text-primary{% endif %} mt-1">{{ error_count }}</p>
+  </div>
+</div>
+
+<!-- Second row -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  <!-- Recent activity -->
+  <div class="card p-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-semibold text-sm text-gray-700">Recent Activity</h2>
+    </div>
+    {% if recent_events %}
+    <ul class="divide-y divide-gray-100">
+      {% for event in recent_events %}
+      <li class="py-2 flex items-center gap-3 text-sm">
+        <span class="status-chip-{% if event.status == 'success' %}enabled{% else %}disabled{% endif %} text-xs px-2 py-0.5 rounded-full">
+          {{ event.status }}
+        </span>
+        <span class="text-gray-700 truncate flex-1">{{ event.action }}</span>
+        <span class="text-gray-400 text-xs">{{ event.actor }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-sm text-gray-400">No recent activity.</p>
+    {% endif %}
+  </div>
+
+  <!-- Quick actions -->
+  <div class="card p-4">
+    <h2 class="font-semibold text-sm text-gray-700 mb-3">Quick Actions</h2>
+    <div class="flex flex-col gap-2">
+      <a href="{% url 'imcp-portal-services' %}"
+         class="inline-flex items-center gap-2 bg-primary text-white text-sm px-4 py-2 rounded-lg hover:bg-primary-light transition-colors w-fit">
+        + Add Service
+      </a>
+      <a href="{% url 'imcp-portal-test-console' %}"
+         class="inline-flex items-center gap-2 border border-primary text-primary text-sm px-4 py-2 rounded-lg hover:bg-surface transition-colors w-fit">
+        ▶ Open Test Console
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

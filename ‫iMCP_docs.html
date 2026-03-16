@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iMCP — Intelligent Legacy Bridge</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3347;
+    --accent: #6366f1;
+    --accent2: #818cf8;
+    --green: #22c55e;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+    --cyan: #06b6d4;
+    --pink: #ec4899;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --faint: #475569;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; line-height: 1.6; }
+
+  /* NAV */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(15,17,23,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex; align-items: center; gap: 2rem; height: 56px;
+  }
+  nav .logo { font-weight: 700; font-size: 1.1rem; color: var(--accent2); letter-spacing: -0.5px; }
+  nav a { color: var(--muted); text-decoration: none; font-size: 0.875rem; transition: color 0.2s; }
+  nav a:hover { color: var(--text); }
+  nav .spacer { flex: 1; }
+  nav .badge { background: var(--accent); color: #fff; font-size: 0.7rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
+
+  /* HERO */
+  .hero {
+    padding: 80px 2rem 60px;
+    text-align: center;
+    background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(99,102,241,0.15) 0%, transparent 70%);
+  }
+  .hero-tag { display: inline-block; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.4); color: var(--accent2); font-size: 0.78rem; padding: 4px 14px; border-radius: 99px; margin-bottom: 20px; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600; }
+  .hero h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; line-height: 1.15; letter-spacing: -1px; margin-bottom: 18px; }
+  .hero h1 span { background: linear-gradient(135deg, #818cf8 0%, #06b6d4 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero p { max-width: 640px; margin: 0 auto 32px; color: var(--muted); font-size: 1.1rem; }
+  .hero-stats { display: flex; justify-content: center; gap: 48px; flex-wrap: wrap; margin-top: 40px; }
+  .stat { text-align: center; }
+  .stat-val { font-size: 1.8rem; font-weight: 800; background: linear-gradient(135deg, #818cf8, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .stat-lbl { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+
+  /* SECTIONS */
+  section { padding: 64px 2rem; max-width: 1100px; margin: 0 auto; }
+  .section-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 2px; color: var(--accent2); font-weight: 700; margin-bottom: 10px; }
+  h2 { font-size: clamp(1.4rem, 3vw, 2rem); font-weight: 700; letter-spacing: -0.5px; margin-bottom: 12px; }
+  h3 { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+  p { color: var(--muted); margin-bottom: 12px; }
+  .divider { height: 1px; background: var(--border); margin: 0; }
+
+  /* CARDS */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 28px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; transition: border-color 0.2s, transform 0.2s; }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .card-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; font-size: 1.1rem; }
+  .card h3 { font-size: 0.95rem; margin-bottom: 6px; }
+  .card p { font-size: 0.82rem; margin: 0; }
+
+  /* FLOW STEPS */
+  .steps { display: flex; flex-direction: column; gap: 0; margin-top: 28px; position: relative; }
+  .step { display: flex; gap: 20px; padding: 20px 0; position: relative; }
+  .step-num { flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; position: relative; z-index: 1; }
+  .step-line { position: absolute; left: 17px; top: 56px; bottom: -20px; width: 2px; background: linear-gradient(to bottom, var(--accent), var(--border)); }
+  .step:last-child .step-line { display: none; }
+  .step-body { padding-top: 4px; }
+  .step-body h3 { font-size: 1rem; color: var(--text); margin-bottom: 4px; }
+  .step-body p { font-size: 0.85rem; margin: 0; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; margin-top: 20px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { background: var(--surface2); color: var(--muted); font-weight: 600; padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td strong { color: var(--text); }
+  td code { background: var(--surface2); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; color: var(--cyan); font-family: 'Cascadia Code', 'Fira Code', monospace; }
+
+  /* CODE */
+  pre { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; overflow-x: auto; font-size: 0.82rem; line-height: 1.7; margin-top: 12px; }
+  code { font-family: 'Cascadia Code', 'Fira Code', 'Courier New', monospace; color: var(--cyan); }
+  pre code { color: var(--text); }
+  .kw { color: #c792ea; } .str { color: #c3e88d; } .num { color: #f78c6c; }
+  .cm { color: var(--faint); font-style: italic; } .key { color: var(--accent2); }
+
+  /* BADGES */
+  .tag { display: inline-block; font-size: 0.7rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; margin-right: 4px; }
+  .tag-green { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+  .tag-blue { background: rgba(99,102,241,0.15); color: var(--accent2); border: 1px solid rgba(99,102,241,0.3); }
+  .tag-cyan { background: rgba(6,182,212,0.15); color: var(--cyan); border: 1px solid rgba(6,182,212,0.3); }
+  .tag-yellow { background: rgba(245,158,11,0.15); color: var(--yellow); border: 1px solid rgba(245,158,11,0.3); }
+  .tag-pink { background: rgba(236,72,153,0.15); color: var(--pink); border: 1px solid rgba(236,72,153,0.3); }
+
+  /* TWO COL */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 28px; }
+  @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } nav a { display: none; } }
+
+  /* SVG DIAGRAM CONTAINERS */
+  .diagram-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-top: 28px; overflow-x: auto; }
+  .diagram-wrap svg { display: block; margin: 0 auto; }
+
+  /* COMPARISON */
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+  @media (max-width: 600px) { .compare { grid-template-columns: 1fr; } }
+  .compare-card { border-radius: 12px; padding: 20px; }
+  .compare-card.bad { background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.25); }
+  .compare-card.good { background: rgba(34,197,94,0.07); border: 1px solid rgba(34,197,94,0.25); }
+  .compare-card h3 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+  .compare-card.bad h3 { color: var(--red); }
+  .compare-card.good h3 { color: var(--green); }
+  .compare-card ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .compare-card li { font-size: 0.85rem; color: var(--muted); display: flex; gap: 8px; align-items: flex-start; }
+  .compare-card li::before { content: '✗'; color: var(--red); flex-shrink: 0; }
+  .compare-card.good li::before { content: '✓'; color: var(--green); }
+
+  /* SPEC TABS */
+  .tabs { display: flex; gap: 4px; margin-top: 28px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+  .tab-btn { padding: 8px 20px; border-radius: 8px 8px 0 0; border: 1px solid transparent; border-bottom: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; background: none; color: var(--muted); transition: all 0.2s; position: relative; bottom: -1px; }
+  .tab-btn.active { background: var(--surface); border-color: var(--border); color: var(--text); }
+  .tab-panel { display: none; background: var(--surface); border: 1px solid var(--border); border-top: none; border-radius: 0 0 12px 12px; padding: 24px; }
+  .tab-panel.active { display: block; }
+
+  /* AUTH CARDS */
+  .auth-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 20px; }
+  .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .auth-card .auth-type { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 8px; }
+  .auth-card p { font-size: 0.82rem; margin: 0; }
+
+  /* SECURITY */
+  .security-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 20px; }
+  .sec-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .sec-icon { font-size: 1.4rem; margin-bottom: 10px; }
+  .sec-item h3 { font-size: 0.9rem; margin-bottom: 6px; }
+  .sec-item p { font-size: 0.8rem; margin: 0; }
+
+  /* FOOTER */
+  footer { text-align: center; padding: 40px; color: var(--faint); font-size: 0.82rem; border-top: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <span class="logo">iMCP</span>
+  <a href="#how-it-works">How It Works</a>
+  <a href="#architecture">Architecture</a>
+  <a href="#specs">Spec Types</a>
+  <a href="#auth">Auth</a>
+  <a href="#security">Security</a>
+  <a href="#api">API</a>
+  <span class="spacer"></span>
+  <span class="badge">MCP 2024-11-05</span>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">Model Context Protocol Server</div>
+  <h1>Intelligent <span>Legacy Bridge</span></h1>
+  <p>Turn any existing backend service into an AI-accessible tool — without rewriting a single line of business logic.</p>
+  <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
+    <span class="tag tag-green">WSDL / SOAP</span>
+    <span class="tag tag-cyan">OpenAPI / REST</span>
+    <span class="tag tag-blue">MCP JSON</span>
+    <span class="tag tag-yellow">IBM AS400 / IBMi</span>
+    <span class="tag tag-pink">SAP · Apigee · Mainframe</span>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-val">&lt; 1hr</div><div class="stat-lbl">Live per service</div></div>
+    <div class="stat"><div class="stat-val">0</div><div class="stat-lbl">Lines changed in backend</div></div>
+    <div class="stat"><div class="stat-val">4</div><div class="stat-lbl">Auth types supported</div></div>
+    <div class="stat"><div class="stat-val">3</div><div class="stat-lbl">Spec formats</div></div>
+  </div>
+</div>
+<div class="divider"></div>
+
+<!-- WHY iMCP -->
+<section id="why">
+  <div class="section-label">The Problem</div>
+  <h2>Valuable logic locked in systems AI can't reach</h2>
+  <p>Organizations run on battle-tested legacy systems — IBMi/AS400, SAP, mainframes, SOAP services — built over decades. These systems work, but they are completely invisible to modern AI assistants. The traditional path to fixing this means multi-year rewrites costing millions.</p>
+  <div class="compare">
+    <div class="compare-card bad">
+      <h3>Traditional Approach</h3>
+      <ul>
+        <li>12–18 month full rewrite</li>
+        <li>$2M–$5M+ investment</li>
+        <li>Risk of logic loss &amp; disruption</li>
+        <li>Point-in-time integrations</li>
+        <li>No AI-native interface</li>
+      </ul>
+    </div>
+    <div class="compare-card good">
+      <h3>iMCP Approach</h3>
+      <ul>
+        <li>Live in &lt; 1 hour per service</li>
+        <li>Minimal integration cost</li>
+        <li>Zero changes to existing systems</li>
+        <li>Dynamic discovery — always current</li>
+        <li>Native MCP tools for any AI client</li>
+      </ul>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- HOW IT WORKS -->
+<section id="how-it-works">
+  <div class="section-label">Concept</div>
+  <h2>How iMCP Works</h2>
+  <p>iMCP sits between your AI assistant and your backend services. It dynamically discovers operations from service contracts, generates structured tool definitions, and brokers authenticated calls — completely transparent to both sides.</p>
+
+  <!-- Main flow SVG -->
+  <div class="diagram-wrap">
+    <svg width="960" height="220" viewBox="0 0 960 220" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;">
+      <defs>
+        <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#6366f1"/>
+        </marker>
+        <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#06b6d4"/>
+        </marker>
+        <linearGradient id="gAccent" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#6366f1;stop-opacity:1"/>
+          <stop offset="100%" style="stop-color:#818cf8;stop-opacity:1"/>
+        </linearGradient>
+        <linearGradient id="gCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#0891b2;stop-opacity:1"/>
+          <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1"/>
+        </linearGradient>
+        <linearGradient id="gGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#16a34a;stop-opacity:1"/>
+          <stop offset="100%" style="stop-color:#22c55e;stop-opacity:1"/>
+        </linearGradient>
+      </defs>
+
+      <!-- AI Client box -->
+      <rect x="20" y="70" width="160" height="80" rx="12" fill="#1a1d27" stroke="#6366f1" stroke-width="1.5"/>
+      <rect x="20" y="70" width="160" height="28" rx="12" fill="url(#gAccent)"/>
+      <rect x="20" y="86" width="160" height="12" fill="url(#gAccent)"/>
+      <text x="100" y="89" text-anchor="middle" font-size="11" font-weight="700" fill="white">AI Assistant</text>
+      <text x="100" y="117" text-anchor="middle" font-size="10" fill="#94a3b8">Claude / Copilot /</text>
+      <text x="100" y="131" text-anchor="middle" font-size="10" fill="#94a3b8">Any MCP Client</text>
+
+      <!-- Arrow 1 -->
+      <line x1="180" y1="110" x2="248" y2="110" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arr)" stroke-dasharray="4,2"/>
+      <text x="214" y="103" text-anchor="middle" font-size="9" fill="#818cf8">tools/list</text>
+      <text x="214" y="122" text-anchor="middle" font-size="9" fill="#818cf8">tools/call</text>
+
+      <!-- iMCP box -->
+      <rect x="250" y="40" width="460" height="140" rx="14" fill="#1a1d27" stroke="#818cf8" stroke-width="2"/>
+      <rect x="250" y="40" width="460" height="32" rx="14" fill="url(#gAccent)"/>
+      <rect x="250" y="58" width="460" height="14" fill="url(#gAccent)"/>
+      <text x="480" y="62" text-anchor="middle" font-size="12" font-weight="700" fill="white">iMCP Server</text>
+
+      <!-- Internal boxes -->
+      <rect x="268" y="88" width="100" height="40" rx="8" fill="#22263a" stroke="#2e3347" stroke-width="1"/>
+      <text x="318" y="106" text-anchor="middle" font-size="9.5" fill="#818cf8" font-weight="600">Spec Parser</text>
+      <text x="318" y="120" text-anchor="middle" font-size="8.5" fill="#64748b">WSDL·OAS·JSON</text>
+
+      <rect x="385" y="88" width="100" height="40" rx="8" fill="#22263a" stroke="#2e3347" stroke-width="1"/>
+      <text x="435" y="106" text-anchor="middle" font-size="9.5" fill="#818cf8" font-weight="600">Tool Generator</text>
+      <text x="435" y="120" text-anchor="middle" font-size="8.5" fill="#64748b">JSON Schema tools</text>
+
+      <rect x="502" y="88" width="90" height="40" rx="8" fill="#22263a" stroke="#2e3347" stroke-width="1"/>
+      <text x="547" y="106" text-anchor="middle" font-size="9.5" fill="#06b6d4" font-weight="600">Auth Proxy</text>
+      <text x="547" y="120" text-anchor="middle" font-size="8.5" fill="#64748b">Bearer·Basic·OAuth2</text>
+
+      <rect x="609" y="88" width="88" height="40" rx="8" fill="#22263a" stroke="#2e3347" stroke-width="1"/>
+      <text x="653" y="106" text-anchor="middle" font-size="9.5" fill="#22c55e" font-weight="600">Executor</text>
+      <text x="653" y="120" text-anchor="middle" font-size="8.5" fill="#64748b">HTTP · SOAP · REST</text>
+
+      <!-- Internal arrows -->
+      <line x1="368" y1="108" x2="383" y2="108" stroke="#2e3347" stroke-width="1" marker-end="url(#arr)"/>
+      <line x1="485" y1="108" x2="500" y2="108" stroke="#2e3347" stroke-width="1" marker-end="url(#arr)"/>
+      <line x1="592" y1="108" x2="607" y2="108" stroke="#2e3347" stroke-width="1" marker-end="url(#arr)"/>
+
+      <!-- Audit + Cache labels -->
+      <text x="350" y="164" text-anchor="middle" font-size="9" fill="#475569">TTL Cache</text>
+      <text x="480" y="164" text-anchor="middle" font-size="9" fill="#475569">Audit Log</text>
+      <text x="600" y="164" text-anchor="middle" font-size="9" fill="#475569">Admin Portal</text>
+
+      <!-- Arrow 2 -->
+      <line x1="712" y1="110" x2="778" y2="110" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#arr2)" stroke-dasharray="4,2"/>
+      <text x="745" y="103" text-anchor="middle" font-size="9" fill="#06b6d4">SOAP/REST</text>
+      <text x="745" y="122" text-anchor="middle" font-size="9" fill="#06b6d4">HTTP calls</text>
+
+      <!-- Backend box -->
+      <rect x="780" y="70" width="160" height="80" rx="12" fill="#1a1d27" stroke="#06b6d4" stroke-width="1.5"/>
+      <rect x="780" y="70" width="160" height="28" rx="12" fill="url(#gCyan)"/>
+      <rect x="780" y="86" width="160" height="12" fill="url(#gCyan)"/>
+      <text x="860" y="89" text-anchor="middle" font-size="11" font-weight="700" fill="white">Backend Services</text>
+      <text x="860" y="117" text-anchor="middle" font-size="10" fill="#94a3b8">WSDL · OpenAPI</text>
+      <text x="860" y="131" text-anchor="middle" font-size="10" fill="#94a3b8">SAP · IBMi · Apigee</text>
+
+      <!-- MCP label -->
+      <text x="214" y="145" text-anchor="middle" font-size="8.5" fill="#475569">MCP JSON-RPC 2.0</text>
+    </svg>
+  </div>
+
+  <!-- Steps -->
+  <div class="steps" style="margin-top:36px;">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-line"></div>
+      <div class="step-body">
+        <h3>Register a Service</h3>
+        <p>Provide a WSDL URL, OpenAPI spec URL, or upload an MCP JSON file. No changes needed on the backend system.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-line"></div>
+      <div class="step-body">
+        <h3>Spec Parsing &amp; Tool Generation</h3>
+        <p>iMCP parses the spec, extracts all operations, converts XSD/JSON Schema types, and generates strongly-typed MCP tool definitions — one tool per operation.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-line"></div>
+      <div class="step-body">
+        <h3>Tools Cached &amp; Served</h3>
+        <p>Generated tools are stored in the database and held in a TTLCache. Any connected AI client receives the full tool list instantly via <code>tools/list</code>.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-line"></div>
+      <div class="step-body">
+        <h3>AI Calls a Tool</h3>
+        <p>When the AI issues a <code>tools/call</code>, iMCP validates inputs, injects authentication headers, calls the upstream service (SOAP or REST), and returns the normalized result.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h3>Audit &amp; Observability</h3>
+        <p>Every call produces a structured audit event: correlation ID, actor, tool name, latency, and a sanitized (secrets-redacted) payload.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- ARCHITECTURE -->
+<section id="architecture">
+  <div class="section-label">Architecture</div>
+  <h2>Internal Component Architecture</h2>
+  <p>iMCP is a Django application with three layers: views (HTTP/MCP protocol), services (business logic), and models (persistence). Every component has a single clear responsibility.</p>
+
+  <div class="diagram-wrap">
+    <svg width="920" height="520" viewBox="0 0 920 520" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;">
+      <defs>
+        <marker id="a1" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L7,3 z" fill="#475569"/>
+        </marker>
+        <marker id="a2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L7,3 z" fill="#6366f1"/>
+        </marker>
+        <marker id="a3" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L7,3 z" fill="#06b6d4"/>
+        </marker>
+      </defs>
+
+      <!-- Layer labels -->
+      <text x="12" y="76" font-size="9" fill="#475569" font-weight="700" text-transform="uppercase" letter-spacing="1">CLIENTS</text>
+      <text x="12" y="186" font-size="9" fill="#475569" font-weight="700">VIEWS LAYER</text>
+      <text x="12" y="326" font-size="9" fill="#475569" font-weight="700">SERVICES LAYER</text>
+      <text x="12" y="456" font-size="9" fill="#475569" font-weight="700">DATA LAYER</text>
+
+      <!-- Lane backgrounds -->
+      <rect x="80" y="50" width="830" height="70" rx="10" fill="rgba(99,102,241,0.04)" stroke="rgba(99,102,241,0.1)" stroke-width="1"/>
+      <rect x="80" y="140" width="830" height="100" rx="10" fill="rgba(99,102,241,0.06)" stroke="rgba(99,102,241,0.15)" stroke-width="1"/>
+      <rect x="80" y="260" width="830" height="160" rx="10" fill="rgba(6,182,212,0.04)" stroke="rgba(6,182,212,0.12)" stroke-width="1"/>
+      <rect x="80" y="440" width="830" height="60" rx="10" fill="rgba(34,197,94,0.04)" stroke="rgba(34,197,94,0.12)" stroke-width="1"/>
+
+      <!-- CLIENTS -->
+      <rect x="100" y="62" width="120" height="44" rx="8" fill="#22263a" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="160" y="81" text-anchor="middle" font-size="10" font-weight="600" fill="#818cf8">Claude Code</text>
+      <text x="160" y="96" text-anchor="middle" font-size="9" fill="#64748b">MCP Client</text>
+
+      <rect x="240" y="62" width="120" height="44" rx="8" fill="#22263a" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="300" y="81" text-anchor="middle" font-size="10" font-weight="600" fill="#818cf8">VS Code / Copilot</text>
+      <text x="300" y="96" text-anchor="middle" font-size="9" fill="#64748b">MCP Client</text>
+
+      <rect x="380" y="62" width="120" height="44" rx="8" fill="#22263a" stroke="#6366f1" stroke-width="1.5"/>
+      <text x="440" y="81" text-anchor="middle" font-size="10" font-weight="600" fill="#818cf8">Any MCP Client</text>
+      <text x="440" y="96" text-anchor="middle" font-size="9" fill="#64748b">JSON-RPC 2.0</text>
+
+      <rect x="640" y="62" width="120" height="44" rx="8" fill="#22263a" stroke="#475569" stroke-width="1"/>
+      <text x="700" y="81" text-anchor="middle" font-size="10" font-weight="600" fill="#94a3b8">Admin User</text>
+      <text x="700" y="96" text-anchor="middle" font-size="9" fill="#64748b">Browser / API</text>
+
+      <!-- Arrows clients → views -->
+      <line x1="160" y1="106" x2="160" y2="150" stroke="#6366f1" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="300" y1="106" x2="268" y2="150" stroke="#6366f1" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="440" y1="106" x2="268" y2="150" stroke="#6366f1" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="700" y1="106" x2="700" y2="150" stroke="#475569" stroke-width="1.5" marker-end="url(#a1)"/>
+
+      <!-- VIEWS LAYER -->
+      <rect x="100" y="152" width="260" height="72" rx="8" fill="#22263a" stroke="#818cf8" stroke-width="1.5"/>
+      <text x="230" y="172" text-anchor="middle" font-size="10" font-weight="700" fill="#818cf8">mcp.py</text>
+      <text x="230" y="186" text-anchor="middle" font-size="9" fill="#64748b">MCP JSON-RPC 2.0 endpoint</text>
+      <text x="143" y="204" font-size="8.5" fill="#475569">POST /imcp/mcp</text>
+      <text x="143" y="216" font-size="8.5" fill="#475569">tools/list · tools/call</text>
+
+      <rect x="390" y="152" width="520" height="72" rx="8" fill="#22263a" stroke="#475569" stroke-width="1"/>
+      <text x="650" y="172" text-anchor="middle" font-size="10" font-weight="700" fill="#94a3b8">Admin Views</text>
+      <text x="490" y="190" text-anchor="middle" font-size="9" fill="#64748b">services.py</text>
+      <text x="580" y="190" text-anchor="middle" font-size="9" fill="#64748b">tools.py</text>
+      <text x="665" y="190" text-anchor="middle" font-size="9" fill="#64748b">test.py</text>
+      <text x="755" y="190" text-anchor="middle" font-size="9" fill="#64748b">api_keys.py</text>
+      <text x="845" y="190" text-anchor="middle" font-size="9" fill="#64748b">status.py</text>
+      <line x1="533" y1="182" x2="533" y2="195" stroke="#2e3347" stroke-width="1"/>
+      <line x1="623" y1="182" x2="623" y2="195" stroke="#2e3347" stroke-width="1"/>
+      <line x1="710" y1="182" x2="710" y2="195" stroke="#2e3347" stroke-width="1"/>
+      <line x1="800" y1="182" x2="800" y2="195" stroke="#2e3347" stroke-width="1"/>
+
+      <!-- Arrows views → services -->
+      <line x1="230" y1="224" x2="230" y2="268" stroke="#6366f1" stroke-width="1.5" marker-end="url(#a2)"/>
+      <line x1="650" y1="224" x2="650" y2="268" stroke="#475569" stroke-width="1.5" marker-end="url(#a1)"/>
+
+      <!-- SERVICES LAYER -->
+      <!-- Row 1 -->
+      <rect x="96" y="272" width="108" height="46" rx="7" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="150" y="292" text-anchor="middle" font-size="9" font-weight="600" fill="#06b6d4">wsdl_parser.py</text>
+      <text x="150" y="306" text-anchor="middle" font-size="8" fill="#475569">SOAP / WSDL</text>
+
+      <rect x="214" y="272" width="108" height="46" rx="7" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="268" y="292" text-anchor="middle" font-size="9" font-weight="600" fill="#06b6d4">openapi_parser.py</text>
+      <text x="268" y="306" text-anchor="middle" font-size="8" fill="#475569">OAS 2.x / 3.x</text>
+
+      <rect x="332" y="272" width="108" height="46" rx="7" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="386" y="292" text-anchor="middle" font-size="9" font-weight="600" fill="#06b6d4">mcp_json_parser.py</text>
+      <text x="386" y="306" text-anchor="middle" font-size="8" fill="#475569">MCP JSON spec</text>
+
+      <rect x="450" y="272" width="108" height="46" rx="7" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="504" y="292" text-anchor="middle" font-size="9" font-weight="600" fill="#818cf8">tool_generator.py</text>
+      <text x="504" y="306" text-anchor="middle" font-size="8" fill="#475569">MCPTool pipeline</text>
+
+      <rect x="568" y="272" width="108" height="46" rx="7" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="622" y="292" text-anchor="middle" font-size="9" font-weight="600" fill="#818cf8">schema_converter.py</text>
+      <text x="622" y="306" text-anchor="middle" font-size="8" fill="#475569">XSD → JSON Schema</text>
+
+      <!-- Row 2 -->
+      <rect x="96" y="332" width="108" height="46" rx="7" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="150" y="352" text-anchor="middle" font-size="9" font-weight="600" fill="#f59e0b">executor.py</text>
+      <text x="150" y="366" text-anchor="middle" font-size="8" fill="#475569">Unified executor</text>
+
+      <rect x="214" y="332" width="108" height="46" rx="7" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="268" y="352" text-anchor="middle" font-size="9" font-weight="600" fill="#f59e0b">openapi_executor.py</text>
+      <text x="268" y="366" text-anchor="middle" font-size="8" fill="#475569">REST upstream calls</text>
+
+      <rect x="332" y="332" width="108" height="46" rx="7" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="386" y="352" text-anchor="middle" font-size="9" font-weight="600" fill="#f59e0b">mcp_json_executor.py</text>
+      <text x="386" y="366" text-anchor="middle" font-size="8" fill="#475569">MCP JSON upstream</text>
+
+      <rect x="450" y="332" width="108" height="46" rx="7" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="504" y="352" text-anchor="middle" font-size="9" font-weight="600" fill="#ec4899">auth_headers.py</text>
+      <text x="504" y="366" text-anchor="middle" font-size="8" fill="#475569">Header builder</text>
+
+      <rect x="568" y="332" width="108" height="46" rx="7" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="622" y="352" text-anchor="middle" font-size="9" font-weight="600" fill="#ec4899">oauth.py</text>
+      <text x="622" y="366" text-anchor="middle" font-size="8" fill="#475569">OAuth2 token cache</text>
+
+      <rect x="686" y="272" width="108" height="46" rx="7" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="740" y="292" text-anchor="middle" font-size="9" font-weight="600" fill="#22c55e">cache.py</text>
+      <text x="740" y="306" text-anchor="middle" font-size="8" fill="#475569">TTLCache service</text>
+
+      <rect x="804" y="272" width="96" height="46" rx="7" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="852" y="292" text-anchor="middle" font-size="9" font-weight="600" fill="#22c55e">audit.py</text>
+      <text x="852" y="306" text-anchor="middle" font-size="8" fill="#475569">Audit events</text>
+
+      <rect x="686" y="332" width="108" height="46" rx="7" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="740" y="352" text-anchor="middle" font-size="9" font-weight="600" fill="#22c55e">encryption.py</text>
+      <text x="740" y="366" text-anchor="middle" font-size="8" fill="#475569">Fernet AES-128</text>
+
+      <rect x="804" y="332" width="96" height="46" rx="7" fill="#1a1d27" stroke="#2e3347" stroke-width="1"/>
+      <text x="852" y="352" text-anchor="middle" font-size="9" font-weight="600" fill="#22c55e">redaction.py</text>
+      <text x="852" y="366" text-anchor="middle" font-size="8" fill="#475569">PII scrubbing</text>
+
+      <!-- Arrows services → models -->
+      <line x1="400" y1="392" x2="400" y2="448" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#a3)"/>
+
+      <!-- DATA LAYER -->
+      <rect x="140" y="452" width="120" height="38" rx="7" fill="#22263a" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="200" y="468" text-anchor="middle" font-size="9.5" font-weight="600" fill="#22c55e">service.py</text>
+      <text x="200" y="482" text-anchor="middle" font-size="8.5" fill="#64748b">Service catalog</text>
+
+      <rect x="290" y="452" width="120" height="38" rx="7" fill="#22263a" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="350" y="468" text-anchor="middle" font-size="9.5" font-weight="600" fill="#22c55e">tool_cache.py</text>
+      <text x="350" y="482" text-anchor="middle" font-size="8.5" fill="#64748b">Cached tool defs</text>
+
+      <rect x="440" y="452" width="120" height="38" rx="7" fill="#22263a" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="500" y="468" text-anchor="middle" font-size="9.5" font-weight="600" fill="#22c55e">audit.py</text>
+      <text x="500" y="482" text-anchor="middle" font-size="8.5" fill="#64748b">Audit event log</text>
+
+      <rect x="590" y="452" width="120" height="38" rx="7" fill="#22263a" stroke="#22c55e" stroke-width="1.5"/>
+      <text x="650" y="468" text-anchor="middle" font-size="9.5" font-weight="600" fill="#22c55e">api_key.py</text>
+      <text x="650" y="482" text-anchor="middle" font-size="8.5" fill="#64748b">Hashed API keys</text>
+
+      <!-- DB icon -->
+      <rect x="760" y="452" width="140" height="38" rx="7" fill="#1a1d27" stroke="#475569" stroke-width="1"/>
+      <text x="830" y="468" text-anchor="middle" font-size="9.5" font-weight="600" fill="#64748b">SQLite → PostgreSQL</text>
+      <text x="830" y="482" text-anchor="middle" font-size="8.5" fill="#475569">Drop-in swap</text>
+    </svg>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- REQUEST FLOW -->
+<section id="request-flow">
+  <div class="section-label">Workflow</div>
+  <h2>Tool Call Request Flow</h2>
+  <p>Every AI tool call passes through a consistent, audited pipeline. The same path is used by both the live MCP endpoint and the Admin Portal Test Console — guaranteed parity.</p>
+
+  <div class="diagram-wrap">
+    <svg width="900" height="340" viewBox="0 0 900 340" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;">
+      <defs>
+        <marker id="ra" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L7,3 z" fill="#6366f1"/>
+        </marker>
+        <marker id="rb" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L7,3 z" fill="#06b6d4"/>
+        </marker>
+        <marker id="rc" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L7,3 z" fill="#22c55e"/>
+        </marker>
+      </defs>
+
+      <!-- Swimlane headers -->
+      <rect x="0" y="0" width="900" height="28" rx="6" fill="#1a1d27"/>
+      <text x="80" y="18" text-anchor="middle" font-size="9" fill="#64748b" font-weight="700">AI CLIENT</text>
+      <text x="250" y="18" text-anchor="middle" font-size="9" fill="#64748b" font-weight="700">AUTH MIDDLEWARE</text>
+      <text x="440" y="18" text-anchor="middle" font-size="9" fill="#64748b" font-weight="700">MCP HANDLER</text>
+      <text x="640" y="18" text-anchor="middle" font-size="9" fill="#64748b" font-weight="700">EXECUTOR</text>
+      <text x="820" y="18" text-anchor="middle" font-size="9" fill="#64748b" font-weight="700">UPSTREAM SERVICE</text>
+
+      <!-- Lifelines -->
+      <line x1="80" y1="28" x2="80" y2="330" stroke="#2e3347" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="250" y1="28" x2="250" y2="330" stroke="#2e3347" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="440" y1="28" x2="440" y2="330" stroke="#2e3347" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="640" y1="28" x2="640" y2="330" stroke="#2e3347" stroke-width="1" stroke-dasharray="4,3"/>
+      <line x1="820" y1="28" x2="820" y2="330" stroke="#2e3347" stroke-width="1" stroke-dasharray="4,3"/>
+
+      <!-- Step 1: POST /imcp/mcp -->
+      <line x1="80" y1="60" x2="243" y2="60" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ra)"/>
+      <text x="162" y="54" text-anchor="middle" font-size="9" fill="#818cf8">POST /imcp/mcp  tools/call</text>
+
+      <!-- Step 2: validate Bearer token -->
+      <line x1="250" y1="80" x2="250" y2="100" stroke="#6366f1" stroke-width="1" stroke-dasharray="3,2"/>
+      <rect x="168" y="82" width="164" height="22" rx="5" fill="#22263a" stroke="#2e3347" stroke-width="1"/>
+      <text x="250" y="97" text-anchor="middle" font-size="9" fill="#94a3b8">Validate Bearer token</text>
+
+      <!-- Step 3: forward to MCP handler -->
+      <line x1="250" y1="110" x2="433" y2="110" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ra)"/>
+      <text x="342" y="104" text-anchor="middle" font-size="9" fill="#818cf8">Authenticated request</text>
+
+      <!-- Step 4: cache lookup -->
+      <line x1="440" y1="130" x2="440" y2="150" stroke="#6366f1" stroke-width="1" stroke-dasharray="3,2"/>
+      <rect x="360" y="132" width="160" height="22" rx="5" fill="#22263a" stroke="#2e3347" stroke-width="1"/>
+      <text x="440" y="147" text-anchor="middle" font-size="9" fill="#94a3b8">Lookup tool from TTLCache</text>
+
+      <!-- Step 5: validate input schema -->
+      <line x1="440" y1="160" x2="440" y2="180" stroke="#6366f1" stroke-width="1" stroke-dasharray="3,2"/>
+      <rect x="360" y="162" width="160" height="22" rx="5" fill="#22263a" stroke="#2e3347" stroke-width="1"/>
+      <text x="440" y="177" text-anchor="middle" font-size="9" fill="#94a3b8">Validate input schema</text>
+
+      <!-- Step 6: call executor -->
+      <line x1="440" y1="190" x2="633" y2="190" stroke="#6366f1" stroke-width="1.5" marker-end="url(#ra)"/>
+      <text x="537" y="184" text-anchor="middle" font-size="9" fill="#818cf8">Execute tool</text>
+
+      <!-- Step 7: build auth headers -->
+      <line x1="640" y1="210" x2="640" y2="230" stroke="#06b6d4" stroke-width="1" stroke-dasharray="3,2"/>
+      <rect x="553" y="212" width="174" height="22" rx="5" fill="#22263a" stroke="#2e3347" stroke-width="1"/>
+      <text x="640" y="227" text-anchor="middle" font-size="9" fill="#94a3b8">Build auth headers (decrypt)</text>
+
+      <!-- Step 8: HTTP call upstream -->
+      <line x1="640" y1="240" x2="813" y2="240" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#rb)"/>
+      <text x="727" y="234" text-anchor="middle" font-size="9" fill="#06b6d4">SOAP / REST HTTP call</text>
+
+      <!-- Step 9: upstream response -->
+      <line x1="820" y1="260" x2="647" y2="260" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#rc)"/>
+      <text x="734" y="254" text-anchor="middle" font-size="9" fill="#22c55e">Response (XML / JSON)</text>
+
+      <!-- Step 10: normalize & audit -->
+      <line x1="640" y1="280" x2="640" y2="300" stroke="#22c55e" stroke-width="1" stroke-dasharray="3,2"/>
+      <rect x="553" y="282" width="174" height="22" rx="5" fill="#22263a" stroke="#2e3347" stroke-width="1"/>
+      <text x="640" y="297" text-anchor="middle" font-size="9" fill="#94a3b8">Normalize + write audit log</text>
+
+      <!-- Step 11: return to AI -->
+      <line x1="640" y1="310" x2="447" y2="310" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#rc)"/>
+      <line x1="440" y1="310" x2="87" y2="310" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#rc)"/>
+      <text x="260" y="304" text-anchor="middle" font-size="9" fill="#22c55e">MCP tool result (JSON-RPC 2.0)</text>
+    </svg>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- SPEC TYPES -->
+<section id="specs">
+  <div class="section-label">Spec Types</div>
+  <h2>Three Ways to Register a Service</h2>
+  <p>iMCP supports three spec formats. Choose based on what your backend exposes — no changes to the backend required.</p>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('wsdl',this)">WSDL / SOAP</button>
+    <button class="tab-btn" onclick="showTab('openapi',this)">OpenAPI / REST</button>
+    <button class="tab-btn" onclick="showTab('mcpjson',this)">MCP JSON</button>
+  </div>
+
+  <div id="tab-wsdl" class="tab-panel active">
+    <div class="two-col">
+      <div>
+        <h3 style="color:var(--cyan)">WSDL / SOAP</h3>
+        <p>Point iMCP at any WSDL URL or upload a <code>.wsdl</code> / <code>.xml</code> file from IBM AS400, SAP, Oracle, mainframe, or any enterprise platform.</p>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> Parses all services, ports, and operations</li>
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> Converts XSD complex types → JSON Schema</li>
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> Handles nested objects (policies, claims, etc.)</li>
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> Operation allowlists / denylists</li>
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> Works over HTTP and HTTPS</li>
+        </ul>
+        <div style="margin-top:14px;">
+          <span class="tag tag-yellow">IBM AS400</span>
+          <span class="tag tag-cyan">SAP</span>
+          <span class="tag tag-blue">Mainframe</span>
+          <span class="tag tag-green">Oracle</span>
+        </div>
+      </div>
+      <div>
+        <p style="font-size:0.82rem;color:var(--faint);margin-bottom:6px;">Example WSDL registration</p>
+        <pre><code><span class="cm"># Register a SOAP service via Admin Portal or API</span>
+POST /imcp/admin/services
+{
+  <span class="key">"name"</span>: <span class="str">"PolicySearch"</span>,
+  <span class="key">"spec_type"</span>: <span class="str">"wsdl"</span>,
+  <span class="key">"spec_url"</span>: <span class="str">"http://ibmi-host/wsservices/PolicySearch?wsdl"</span>,
+  <span class="key">"auth_type"</span>: <span class="str">"basic"</span>,
+  <span class="key">"auth_config"</span>: {
+    <span class="key">"username"</span>: <span class="str">"svcuser"</span>,
+    <span class="key">"password"</span>: <span class="str">"••••••"</span>
+  },
+  <span class="key">"category"</span>: <span class="str">"Policy"</span>
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-openapi" class="tab-panel">
+    <div class="two-col">
+      <div>
+        <h3 style="color:var(--accent2)">OpenAPI 2.x / 3.x</h3>
+        <p>Supply an OpenAPI spec as a URL or upload a <code>.yaml</code> / <code>.json</code> file. Works with any REST API — cloud, on-premise, or API gateway.</p>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> Full <code>$ref</code> resolution via prance</li>
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> One tool per path + method combination</li>
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> Maps path, query, and body params</li>
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> Preserves enum, min/max, pattern constraints</li>
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> Supports Apigee, AWS APIGW, Kong hosted specs</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-size:0.82rem;color:var(--faint);margin-bottom:6px;">Example OpenAPI registration</p>
+        <pre><code>POST /imcp/admin/services
+{
+  <span class="key">"name"</span>: <span class="str">"ClaimsAPI"</span>,
+  <span class="key">"spec_type"</span>: <span class="str">"openapi"</span>,
+  <span class="key">"spec_url"</span>: <span class="str">"https://api.internal/claims/openapi.yaml"</span>,
+  <span class="key">"auth_type"</span>: <span class="str">"oauth2"</span>,
+  <span class="key">"auth_config"</span>: {
+    <span class="key">"token_url"</span>: <span class="str">"https://auth.example.com/token"</span>,
+    <span class="key">"client_id"</span>: <span class="str">"imcp-client"</span>,
+    <span class="key">"client_secret"</span>: <span class="str">"••••••"</span>,
+    <span class="key">"scope"</span>: <span class="str">"read:claims"</span>
+  }
+}</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-mcpjson" class="tab-panel">
+    <div class="two-col">
+      <div>
+        <h3 style="color:var(--pink)">MCP JSON</h3>
+        <p>A lightweight custom format for wrapping any HTTP endpoint directly — no full WSDL or OpenAPI spec required. Ideal for simple REST services or quick prototyping.</p>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> No spec file needed — describe tools directly</li>
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> Supports GET / POST / PUT / DELETE</li>
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> Query params and request body mapping</li>
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> Default values for optional parameters</li>
+          <li style="font-size:0.85rem;color:var(--muted);display:flex;gap:8px;"><span style="color:var(--green)">✓</span> One-click template download from portal</li>
+        </ul>
+      </div>
+      <div>
+        <p style="font-size:0.82rem;color:var(--faint);margin-bottom:6px;">MCP JSON format</p>
+        <pre><code>{
+  <span class="key">"name"</span>: <span class="str">"my-service"</span>,
+  <span class="key">"tools"</span>: [{
+    <span class="key">"name"</span>: <span class="str">"searchProduct"</span>,
+    <span class="key">"description"</span>: <span class="str">"Search product catalog by SKU"</span>,
+    <span class="key">"inputSchema"</span>: {
+      <span class="key">"type"</span>: <span class="str">"object"</span>,
+      <span class="key">"properties"</span>: {
+        <span class="key">"sku"</span>: { <span class="key">"type"</span>: <span class="str">"string"</span> }
+      },
+      <span class="key">"required"</span>: [<span class="str">"sku"</span>]
+    },
+    <span class="key">"endpoint"</span>: {
+      <span class="key">"method"</span>: <span class="str">"GET"</span>,
+      <span class="key">"baseUrl"</span>: <span class="str">"https://api.example.com"</span>,
+      <span class="key">"path"</span>: <span class="str">"/catalog/products"</span>,
+      <span class="key">"queryParams"</span>: [<span class="str">"sku"</span>]
+    }
+  }]
+}</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- AUTH -->
+<section id="auth">
+  <div class="section-label">Authentication</div>
+  <h2>Auth Proxy — Four Supported Types</h2>
+  <p>iMCP handles all outbound authentication transparently. Credentials are Fernet-encrypted at rest and never exposed to AI clients or logs.</p>
+  <div class="auth-grid">
+    <div class="auth-card" style="border-color:rgba(99,102,241,0.4)">
+      <div class="auth-type" style="color:var(--accent2)">Bearer Token</div>
+      <p>Static token injected as <code>Authorization: Bearer …</code> on every upstream call.</p>
+      <pre style="margin-top:10px;font-size:0.75rem;padding:12px;"><code>{ <span class="key">"token"</span>: <span class="str">"your-token"</span> }</code></pre>
+    </div>
+    <div class="auth-card" style="border-color:rgba(6,182,212,0.4)">
+      <div class="auth-type" style="color:var(--cyan)">Basic Auth</div>
+      <p>Username + password encoded as <code>Authorization: Basic …</code> on every request.</p>
+      <pre style="margin-top:10px;font-size:0.75rem;padding:12px;"><code>{ <span class="key">"username"</span>: <span class="str">"u"</span>, <span class="key">"password"</span>: <span class="str">"p"</span> }</code></pre>
+    </div>
+    <div class="auth-card" style="border-color:rgba(245,158,11,0.4)">
+      <div class="auth-type" style="color:var(--yellow)">Custom Headers</div>
+      <p>Any arbitrary headers — <code>X-API-Key</code>, <code>X-Tenant</code>, or any proprietary header your backend requires.</p>
+      <pre style="margin-top:10px;font-size:0.75rem;padding:12px;"><code>{ <span class="key">"headers"</span>: { <span class="key">"X-API-Key"</span>: <span class="str">"k"</span> } }</code></pre>
+    </div>
+    <div class="auth-card" style="border-color:rgba(236,72,153,0.4)">
+      <div class="auth-type" style="color:var(--pink)">OAuth2 Client Credentials</div>
+      <p>Fetches a token from a token endpoint, caches it for ~58 minutes, and refreshes automatically. Fully transparent to the AI.</p>
+      <pre style="margin-top:10px;font-size:0.75rem;padding:12px;"><code>{
+  <span class="key">"token_url"</span>: <span class="str">"https://…/token"</span>,
+  <span class="key">"client_id"</span>: <span class="str">"id"</span>,
+  <span class="key">"client_secret"</span>: <span class="str">"s"</span>,
+  <span class="key">"scope"</span>: <span class="str">"read:api"</span>
+}</code></pre>
+    </div>
+  </div>
+
+  <!-- OAuth flow -->
+  <div style="margin-top:28px;">
+    <h3>OAuth2 Token Flow</h3>
+    <div class="diagram-wrap" style="margin-top:12px;">
+      <svg width="860" height="130" viewBox="0 0 860 130" xmlns="http://www.w3.org/2000/svg" style="max-width:100%;height:auto;">
+        <defs>
+          <marker id="oa" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L7,3 z" fill="#ec4899"/>
+          </marker>
+          <marker id="ob" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L7,3 z" fill="#22c55e"/>
+          </marker>
+        </defs>
+        <!-- Nodes -->
+        <rect x="10" y="45" width="140" height="40" rx="8" fill="#22263a" stroke="#ec4899" stroke-width="1.5"/>
+        <text x="80" y="62" text-anchor="middle" font-size="10" font-weight="600" fill="#ec4899">iMCP Executor</text>
+        <text x="80" y="77" text-anchor="middle" font-size="8.5" fill="#64748b">needs auth header</text>
+
+        <rect x="220" y="45" width="140" height="40" rx="8" fill="#22263a" stroke="#ec4899" stroke-width="1.5"/>
+        <text x="290" y="62" text-anchor="middle" font-size="10" font-weight="600" fill="#ec4899">oauth.py</text>
+        <text x="290" y="77" text-anchor="middle" font-size="8.5" fill="#64748b">token cache check</text>
+
+        <rect x="430" y="10" width="140" height="40" rx="8" fill="#22263a" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="500" y="27" text-anchor="middle" font-size="10" font-weight="600" fill="#f59e0b">Token Endpoint</text>
+        <text x="500" y="42" text-anchor="middle" font-size="8.5" fill="#64748b">auth.example.com/token</text>
+
+        <rect x="430" y="75" width="140" height="40" rx="8" fill="#22263a" stroke="#22c55e" stroke-width="1.5"/>
+        <text x="500" y="92" text-anchor="middle" font-size="10" font-weight="600" fill="#22c55e">Token Cache</text>
+        <text x="500" y="107" text-anchor="middle" font-size="8.5" fill="#64748b">TTL: 3500s</text>
+
+        <rect x="650" y="45" width="140" height="40" rx="8" fill="#22263a" stroke="#06b6d4" stroke-width="1.5"/>
+        <text x="720" y="62" text-anchor="middle" font-size="10" font-weight="600" fill="#06b6d4">Upstream Service</text>
+        <text x="720" y="77" text-anchor="middle" font-size="8.5" fill="#64748b">API / SOAP endpoint</text>
+
+        <!-- Arrows -->
+        <line x1="150" y1="65" x2="218" y2="65" stroke="#ec4899" stroke-width="1.5" marker-end="url(#oa)"/>
+        <text x="184" y="59" text-anchor="middle" font-size="8" fill="#94a3b8">get token</text>
+
+        <line x1="290" y1="45" x2="430" y2="30" stroke="#f59e0b" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#oa)"/>
+        <text x="355" y="28" text-anchor="middle" font-size="8" fill="#94a3b8">cache miss → fetch</text>
+
+        <line x1="500" y1="50" x2="500" y2="73" stroke="#22c55e" stroke-width="1.5" marker-end="url(#ob)"/>
+        <text x="514" y="66" font-size="8" fill="#94a3b8">store</text>
+
+        <line x1="430" y1="95" x2="360" y2="72" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="4,2" marker-end="url(#ob)"/>
+        <text x="382" y="92" text-anchor="middle" font-size="8" fill="#22c55e">cache hit</text>
+
+        <line x1="360" y1="65" x2="648" y2="65" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#ob)"/>
+        <text x="504" y="59" text-anchor="middle" font-size="8" fill="#94a3b8">Authorization: Bearer …</text>
+      </svg>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- SECURITY -->
+<section id="security">
+  <div class="section-label">Security</div>
+  <h2>Security Model</h2>
+  <p>iMCP is built with security-by-default across every layer — credential storage, transport, logging, and operation governance.</p>
+  <div class="security-grid">
+    <div class="sec-item">
+      <div class="sec-icon">🔐</div>
+      <h3>Fernet Encryption at Rest</h3>
+      <p>All service credentials (tokens, passwords, OAuth2 secrets) are AES-128-CBC encrypted using a key derived from Django's <code>SECRET_KEY</code>. Decrypted only in memory at call time.</p>
+    </div>
+    <div class="sec-item">
+      <div class="sec-icon">🧹</div>
+      <h3>PII Redaction in Logs</h3>
+      <p>Configurable redaction patterns scrub <code>Authorization</code> headers, <code>token</code>, <code>password</code>, <code>client_secret</code>, and any custom PII fields from all audit records.</p>
+    </div>
+    <div class="sec-item">
+      <div class="sec-icon">🎛️</div>
+      <h3>Operation Governance</h3>
+      <p>Per-service allowlists and denylists enforce which operations are exposed. Operations outside the allowlist are invisible at <code>tools/list</code> — undiscoverable and uncallable.</p>
+    </div>
+    <div class="sec-item">
+      <div class="sec-icon">🗝️</div>
+      <h3>Hashed API Keys</h3>
+      <p>API keys are stored as hashed values only. They are never returned by any GET endpoint. Revocation is instant via the Token Manager.</p>
+    </div>
+    <div class="sec-item">
+      <div class="sec-icon">📋</div>
+      <h3>Structured Audit Trail</h3>
+      <p>Every tool call, service change, and auth event is logged with: <code>correlation_id</code>, actor, action, service, tool, status, latency, and a redacted payload.</p>
+    </div>
+    <div class="sec-item">
+      <div class="sec-icon">🌐</div>
+      <h3>TLS + Rate Limiting</h3>
+      <p>All upstream calls use <code>httpx</code> with TLS. Portal traffic should sit behind an Nginx TLS proxy. In-memory rate limiting (configurable per-minute limit).</p>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- ADMIN PORTAL -->
+<section id="portal">
+  <div class="section-label">Admin Portal</div>
+  <h2>Built-in Management UI</h2>
+  <p>A full-featured portal built with Django + HTMX + Tailwind CSS. No separate frontend deployment needed.</p>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-icon" style="background:rgba(99,102,241,0.15)">📋</div>
+      <h3>Service Catalog</h3>
+      <p>Add, edit, enable/disable services. Upload spec files or provide URLs. Configure auth per service.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="background:rgba(6,182,212,0.15)">🔧</div>
+      <h3>Tool Registry</h3>
+      <p>Browse all generated tools by service. Inspect input schemas. Force-refresh individual services.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="background:rgba(245,158,11,0.15)">🧪</div>
+      <h3>Test Console</h3>
+      <p>Select any tool, fill in args, run it against the real upstream, and inspect the raw request/response with secrets redacted.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="background:rgba(236,72,153,0.15)">🗝️</div>
+      <h3>Token Manager</h3>
+      <p>Create, view, and revoke API keys for portal and MCP endpoint access.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="background:rgba(34,197,94,0.15)">📊</div>
+      <h3>Status Page</h3>
+      <p>Live adapter health, per-service reachability with latency, cache hit rate, and recent error log.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon" style="background:rgba(139,92,246,0.15)">⚖️</div>
+      <h3>Execution Parity</h3>
+      <p>The Test Console and live MCP endpoint run the same code path. What you test is exactly what AI calls in production.</p>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- API -->
+<section id="api">
+  <div class="section-label">API Reference</div>
+  <h2>Endpoints</h2>
+  <div class="two-col">
+    <div>
+      <h3 style="color:var(--accent2);margin-bottom:12px;">MCP Protocol</h3>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Method</th><th>Path</th><th>Description</th></tr>
+          <tr><td><code>POST</code></td><td><code>/imcp/mcp</code></td><td>MCP JSON-RPC 2.0 endpoint</td></tr>
+          <tr><td><code>GET</code></td><td><code>/imcp/health</code></td><td>Health check (no auth)</td></tr>
+        </table>
+      </div>
+      <pre style="margin-top:16px;"><code><span class="cm">// List tools</span>
+{
+  <span class="key">"jsonrpc"</span>: <span class="str">"2.0"</span>,
+  <span class="key">"id"</span>: <span class="num">1</span>,
+  <span class="key">"method"</span>: <span class="str">"tools/list"</span>,
+  <span class="key">"params"</span>: {}
+}
+
+<span class="cm">// Call a tool</span>
+{
+  <span class="key">"jsonrpc"</span>: <span class="str">"2.0"</span>,
+  <span class="key">"id"</span>: <span class="num">2</span>,
+  <span class="key">"method"</span>: <span class="str">"tools/call"</span>,
+  <span class="key">"params"</span>: {
+    <span class="key">"name"</span>: <span class="str">"searchPolicy"</span>,
+    <span class="key">"arguments"</span>: {
+      <span class="key">"policy-reference"</span>: <span class="str">"POL-20241001-001"</span>
+    }
+  }
+}</code></pre>
+    </div>
+    <div>
+      <h3 style="color:var(--cyan);margin-bottom:12px;">Admin REST API</h3>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Method</th><th>Path</th><th>Description</th></tr>
+          <tr><td><code>GET/POST</code></td><td><code>/imcp/admin/services</code></td><td>List / create services</td></tr>
+          <tr><td><code>PUT/DELETE</code></td><td><code>/imcp/admin/services/&lt;id&gt;</code></td><td>Update / delete</td></tr>
+          <tr><td><code>POST</code></td><td><code>/imcp/admin/tools/refresh</code></td><td>Regenerate tools</td></tr>
+          <tr><td><code>POST</code></td><td><code>/imcp/admin/test/call</code></td><td>Test console execute</td></tr>
+          <tr><td><code>GET</code></td><td><code>/imcp/admin/status</code></td><td>Health &amp; metrics</td></tr>
+          <tr><td><code>GET/POST</code></td><td><code>/imcp/admin/api-keys</code></td><td>Manage API keys</td></tr>
+        </table>
+      </div>
+      <div style="margin-top:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;">
+        <p style="font-size:0.82rem;color:var(--faint);margin-bottom:8px;">Connect from Claude Code CLI</p>
+        <pre style="margin:0;background:none;border:none;padding:0;font-size:0.8rem;"><code>claude mcp add --transport http iMCP \
+  http://localhost:8000/imcp/mcp \
+  --header <span class="str">"Authorization: Bearer &lt;token&gt;"</span> \
+  --scope project</code></pre>
+      </div>
+    </div>
+  </div>
+</section>
+<div class="divider"></div>
+
+<!-- USE CASES -->
+<section id="usecases">
+  <div class="section-label">Use Cases</div>
+  <h2>Works Across Every Industry</h2>
+  <div class="card-grid">
+    <div class="card"><div class="card-icon" style="background:rgba(99,102,241,0.15)">🏢</div><h3>Insurance</h3><p>Policy lookup, claims triage, underwriting checks, coverage queries from SOAP/IBMi systems.</p></div>
+    <div class="card"><div class="card-icon" style="background:rgba(6,182,212,0.15)">🏦</div><h3>Banking &amp; Finance</h3><p>Account queries, transaction history, loan status, compliance checks from core banking SOAP services.</p></div>
+    <div class="card"><div class="card-icon" style="background:rgba(34,197,94,0.15)">🏥</div><h3>Healthcare</h3><p>Patient record lookup, eligibility verification, appointment scheduling from legacy EHR systems.</p></div>
+    <div class="card"><div class="card-icon" style="background:rgba(245,158,11,0.15)">📦</div><h3>Logistics</h3><p>Shipment tracking, inventory queries, order management from warehouse and ERP systems.</p></div>
+    <div class="card"><div class="card-icon" style="background:rgba(236,72,153,0.15)">🛒</div><h3>Retail</h3><p>Product catalog, stock availability, order status, returns from e-commerce and ERP backends.</p></div>
+    <div class="card"><div class="card-icon" style="background:rgba(139,92,246,0.15)">🏭</div><h3>Manufacturing</h3><p>Work order status, production metrics, quality control queries from SCADA and MES systems.</p></div>
+  </div>
+</section>
+
+<!-- QUICK START -->
+<section id="quickstart" style="padding-bottom:80px;">
+  <div class="section-label">Quick Start</div>
+  <h2>Up in 5 Minutes</h2>
+  <div class="two-col">
+    <div>
+      <pre><code><span class="cm"># 1. Clone and install</span>
+git clone https://github.com/your-org/imcp
+cd iMCP
+python -m venv .venv
+source .venv/bin/activate  <span class="cm"># Windows: .venv\Scripts\activate</span>
+pip install -r requirements.txt
+
+<span class="cm"># 2. Migrate database</span>
+python manage.py migrate
+
+<span class="cm"># 3. Create superuser (for admin portal)</span>
+python manage.py createsuperuser
+
+<span class="cm"># 4. Start server</span>
+python manage.py runserver</code></pre>
+    </div>
+    <div>
+      <p style="font-size:0.9rem;color:var(--text);margin-bottom:12px;">Then open <code>http://localhost:8000/imcp/portal/</code></p>
+      <div class="steps" style="margin-top:0">
+        <div class="step">
+          <div class="step-num" style="width:28px;height:28px;font-size:0.75rem">1</div>
+          <div class="step-line"></div>
+          <div class="step-body"><h3 style="font-size:0.9rem">Add a Service</h3><p style="font-size:0.82rem">Go to Services → Add Service. Provide a WSDL URL, OpenAPI spec, or upload MCP JSON.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="width:28px;height:28px;font-size:0.75rem">2</div>
+          <div class="step-line"></div>
+          <div class="step-body"><h3 style="font-size:0.9rem">Verify Tools</h3><p style="font-size:0.82rem">Go to Tools. Inspect generated tool schemas and input definitions.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="width:28px;height:28px;font-size:0.75rem">3</div>
+          <div class="step-line"></div>
+          <div class="step-body"><h3 style="font-size:0.9rem">Test It</h3><p style="font-size:0.82rem">Open Test Console, select a tool, and run it against the real upstream.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="width:28px;height:28px;font-size:0.75rem">4</div>
+          <div class="step-body"><h3 style="font-size:0.9rem">Connect Your AI</h3><p style="font-size:0.82rem">Register the MCP endpoint in Claude Code or VS Code and start calling tools conversationally.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <strong style="color:var(--text)">iMCP</strong> — Intelligent Legacy Bridge &nbsp;·&nbsp; MCP protocol version 2024-11-05 &nbsp;·&nbsp;
+  <span title="Free for non-production use. Cannot be sold or offered as a competing service. Converts to Apache 2.0 on 2029-03-16.">
+    Business Source License 1.1 (BUSL-1.1)
+  </span>
+</footer>
+
+<script>
+function showTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>

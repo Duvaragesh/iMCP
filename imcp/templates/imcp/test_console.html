@@ -1,0 +1,241 @@
+{% extends "imcp/base.html" %}
+{% load imcp_tags %}
+
+{% block title %}Test Console — iMCP{% endblock %}
+{% block page_title %}Test Console{% endblock %}
+
+{% block content %}
+<!-- Top controls -->
+<div class="card p-3 mb-4 flex flex-wrap items-center gap-3">
+  <select id="tool-select" class="border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+    <option value="">Select a tool...</option>
+    {% for entry in tool_entries %}
+    <optgroup label="{{ entry.service_name }}">
+      {% for tool in entry.tools %}
+      <option value="{{ tool.name }}" data-schema="{{ tool.inputSchema|to_json }}">{{ tool.name }}</option>
+      {% endfor %}
+    </optgroup>
+    {% endfor %}
+  </select>
+
+  <button onclick="reloadTools(this)" title="Regenerate tool list from all services"
+          class="border text-sm px-3 py-2 rounded-lg hover:bg-surface">&#8635; Reload Tools</button>
+  <button onclick="loadSample()" class="border text-sm px-3 py-2 rounded-lg hover:bg-surface">Load Sample</button>
+  <button onclick="validateInput()" class="border text-sm px-3 py-2 rounded-lg hover:bg-surface">Validate</button>
+
+  <button id="execute-btn" onclick="executeCall()"
+          class="bg-primary text-white text-sm px-4 py-2 rounded-lg hover:bg-primary-light disabled:opacity-50">
+    ▶ Execute
+  </button>
+
+  <!-- Risky op confirmation -->
+  <div id="confirm-row" class="hidden flex items-center gap-2">
+    <span class="text-xs text-yellow-600 font-medium">⚠ State-changing operation. Type CONFIRM to enable:</span>
+    <input id="confirm-input" oninput="toggleExecute()" placeholder="CONFIRM"
+           class="border rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-yellow-500" />
+  </div>
+</div>
+
+<!-- Split: input / output -->
+<div class="flex gap-4 h-[calc(100vh-230px)]">
+
+  <!-- Left: request builder -->
+  <div class="flex-1 card p-4 flex flex-col gap-3 overflow-auto">
+    <div class="flex items-center justify-between">
+      <h3 class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Input Arguments (JSON)</h3>
+      <span id="schema-hint" class="text-xs text-gray-400"></span>
+    </div>
+    <textarea id="json-input" class="hidden"></textarea>
+    <div id="json-editor"></div>
+    <div id="validation-errors" class="text-xs text-red-600 hidden"></div>
+  </div>
+
+  <!-- Right: response viewer -->
+  <div class="flex-1 card p-4 overflow-auto" id="response-panel">
+    <p class="text-sm text-gray-400 italic">Response will appear here after execution.</p>
+  </div>
+
+</div>
+
+<form id="execute-form"
+      hx-post="{% url 'imcp-admin-test-call' %}"
+      hx-headers='{"Authorization": "Bearer {{ api_token }}", "Content-Type": "application/json"}'
+      hx-target="#response-panel"
+      hx-swap="innerHTML"
+      hx-indicator="#execute-btn">
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Initialize CodeMirror
+  var editor = CodeMirror(document.getElementById('json-editor'), {
+    mode: {name: 'javascript', json: true},
+    theme: 'default',
+    lineNumbers: true,
+    tabSize: 2,
+    value: '{\n  \n}',
+  });
+
+  // Pre-select tool from URL param
+  const urlParams = new URLSearchParams(window.location.search);
+  const preselect = urlParams.get('tool');
+  if (preselect) {
+    const sel = document.getElementById('tool-select');
+    for (let opt of sel.options) {
+      if (opt.value === preselect) { sel.value = preselect; break; }
+    }
+  }
+
+  async function reloadTools(btn) {
+    const original = btn.textContent;
+    btn.textContent = 'Refreshing…';
+    btn.disabled = true;
+    try {
+      const resp = await fetch('/imcp/admin/tools/refresh', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer {{ api_token }}' },
+      });
+      if (resp.ok) {
+        window.location.reload();
+      } else {
+        const d = await resp.json();
+        alert('Refresh failed: ' + (d.error || resp.status));
+        btn.textContent = original;
+        btn.disabled = false;
+      }
+    } catch (e) {
+      alert('Refresh error: ' + e.message);
+      btn.textContent = original;
+      btn.disabled = false;
+    }
+  }
+
+  function loadSample() {
+    const sel = document.getElementById('tool-select');
+    const opt = sel.options[sel.selectedIndex];
+    if (!opt || !opt.dataset.schema) return;
+    try {
+      const schema = JSON.parse(opt.dataset.schema);
+      const sample = buildSample(schema);
+      editor.setValue(JSON.stringify(sample, null, 2));
+    } catch(e) { showToast('Could not load sample', 'error'); }
+  }
+
+  function buildSample(schema) {
+    const props = schema.properties || {};
+    const out = {};
+    for (const [k, v] of Object.entries(props)) {
+      out[k] = v.type === 'string' ? '' : v.type === 'integer' ? 0 : v.type === 'boolean' ? false : null;
+    }
+    return out;
+  }
+
+  function validateInput() {
+    const errDiv = document.getElementById('validation-errors');
+    try {
+      JSON.parse(editor.getValue());
+      errDiv.classList.add('hidden');
+      showToast('Valid JSON', 'success');
+    } catch(e) {
+      errDiv.textContent = 'Invalid JSON: ' + e.message;
+      errDiv.classList.remove('hidden');
+    }
+  }
+
+  function toggleExecute() {
+    const val = document.getElementById('confirm-input').value;
+    document.getElementById('execute-btn').disabled = (val !== 'CONFIRM');
+  }
+
+  function executeCall() {
+    const toolName = document.getElementById('tool-select').value;
+    if (!toolName) { showToast('Select a tool first', 'warning'); return; }
+
+    let args;
+    try {
+      args = JSON.parse(editor.getValue());
+    } catch(e) {
+      showToast('Fix JSON errors before executing', 'error'); return;
+    }
+
+    const body = JSON.stringify({toolName: toolName, arguments: args});
+    const btn = document.getElementById('execute-btn');
+    btn.textContent = '⏳ Running...';
+    btn.disabled = true;
+
+    fetch('{% url "imcp-admin-test-call" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer {{ api_token }}',
+        'X-CSRFToken': getCookie('csrftoken'),
+      },
+      body: body
+    })
+    .then(r => r.json())
+    .then(data => renderResponse(data))
+    .catch(err => showToast('Execution failed: ' + err, 'error'))
+    .finally(() => { btn.textContent = '▶ Execute'; btn.disabled = false; });
+  }
+
+  function renderResponse(data) {
+    const panel = document.getElementById('response-panel');
+
+    // Handle server-side error shape: {error: "..."}
+    if (data.error && !data.status) {
+      panel.innerHTML = `
+        <div class="flex items-center gap-2 mb-3 text-sm">
+          <span class="text-red-600 font-semibold">error</span>
+        </div>
+        <pre class="bg-red-50 border border-red-200 rounded-lg p-4 text-xs text-red-800 overflow-auto max-h-96 whitespace-pre-wrap">${escHtml(data.error)}</pre>
+      `;
+      return;
+    }
+
+    const status = data.status || 'unknown';
+    const statusClass = status === 'success' ? 'text-green-600' : 'text-red-600';
+    const normalizedText = data.normalized !== undefined
+      ? JSON.stringify(data.normalized, null, 2)
+      : '(no result)';
+
+    panel.innerHTML = `
+      <div class="flex items-center gap-4 mb-4 text-sm">
+        <span class="${statusClass} font-semibold">${escHtml(status)}</span>
+        <span class="text-gray-400">Latency: ${data.latencyMs ?? '—'}ms</span>
+        <span class="text-gray-400 text-xs">Correlation: ${escHtml(data.correlationId || '')}</span>
+      </div>
+      <div class="flex gap-2 mb-3">
+        <button onclick="showTab('normalized')" class="tab-btn text-xs px-3 py-1 rounded border bg-primary text-white">Normalized</button>
+        <button onclick="showTab('raw-req')" class="tab-btn text-xs px-3 py-1 rounded border">Raw Request</button>
+        <button onclick="showTab('raw-resp')" class="tab-btn text-xs px-3 py-1 rounded border">Raw Response</button>
+      </div>
+      <pre id="tab-normalized" class="tab-panel bg-gray-50 rounded-lg p-4 text-xs overflow-auto max-h-96 whitespace-pre-wrap">${escHtml(normalizedText)}</pre>
+      <pre id="tab-raw-req" class="tab-panel hidden bg-gray-50 rounded-lg p-4 text-xs overflow-auto max-h-96 whitespace-pre-wrap">${escHtml(data.rawRequest || 'N/A')}</pre>
+      <pre id="tab-raw-resp" class="tab-panel hidden bg-gray-50 rounded-lg p-4 text-xs overflow-auto max-h-96 whitespace-pre-wrap">${escHtml(data.rawResponse || 'N/A')}</pre>
+    `;
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function showTab(name) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.remove('bg-primary', 'text-white');
+    });
+    document.getElementById('tab-' + name).classList.remove('hidden');
+    event.currentTarget.classList.add('bg-primary', 'text-white');
+  }
+
+  function getCookie(name) {
+    const val = '; ' + document.cookie;
+    const parts = val.split('; ' + name + '=');
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return '';
+  }
+</script>
+{% endblock %}

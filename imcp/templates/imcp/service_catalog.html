@@ -1,0 +1,836 @@
+{% extends "imcp/base.html" %}
+{% load imcp_tags %}
+
+{% block title %}Services — iMCP{% endblock %}
+{% block page_title %}Service Catalog{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <p class="text-sm text-gray-500">{{ services|length }} service(s) registered</p>
+  <button onclick="document.getElementById('add-service-modal').classList.remove('hidden')"
+          class="bg-primary text-white text-sm px-4 py-2 rounded-lg hover:bg-primary-light transition-colors">
+    + Add Service
+  </button>
+</div>
+
+<!-- Services table -->
+<div class="card overflow-hidden">
+  <table class="w-full text-sm">
+    <thead class="bg-surface">
+      <tr>
+        <th class="text-left px-4 py-3 text-gray-600 font-medium">Name</th>
+        <th class="text-left px-4 py-3 text-gray-600 font-medium">Type</th>
+        <th class="text-left px-4 py-3 text-gray-600 font-medium">Category</th>
+        <th class="text-left px-4 py-3 text-gray-600 font-medium">Auth</th>
+        <th class="text-left px-4 py-3 text-gray-600 font-medium">Status</th>
+        <th class="text-left px-4 py-3 text-gray-600 font-medium">Actions</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100" id="services-table-body">
+      {% for service in services %}
+      <tr id="service-row-{{ service.id }}" class="hover:bg-gray-50 transition-colors">
+        <td class="px-4 py-3 font-medium text-gray-800">{{ service.name }}</td>
+        <td class="px-4 py-3 text-gray-600">{{ service.spec_type }}</td>
+        <td class="px-4 py-3 text-gray-600" id="cat-{{ service.id }}">{{ service.category }}</td>
+        <td class="px-4 py-3 text-gray-400" id="auth-{{ service.id }}">{{ service.auth_type|default:"—" }}</td>
+        <td class="px-4 py-3" id="status-cell-{{ service.id }}">
+          <span class="status-chip-{% if service.enabled %}enabled{% else %}disabled{% endif %} text-xs px-2 py-0.5 rounded-full">
+            {% if service.enabled %}enabled{% else %}disabled{% endif %}
+          </span>
+        </td>
+        <td class="px-4 py-3" id="actions-{{ service.id }}">
+          <div class="flex gap-2 flex-wrap">
+            <button onclick="openEditModal({{ service|to_json }})"
+                    class="text-xs text-primary underline hover:no-underline">Edit</button>
+            <button onclick="discoverOps({{ service.id }}, this)"
+                    class="text-xs text-blue-500 underline hover:no-underline">Discover ops</button>
+            <button onclick="deleteService({{ service.id }}, '{{ service.name }}')"
+                    class="text-xs text-red-500 underline hover:no-underline">Delete</button>
+          </div>
+        </td>
+      </tr>
+      <tr id="ops-result-{{ service.id }}"></tr>
+      {% empty %}
+      <tr id="empty-row">
+        <td colspan="6" class="px-4 py-10 text-center text-gray-400">
+          No services yet. Add your first WSDL/OpenAPI to generate MCP tools.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ─── Add Service Modal ─────────────────────────────────────────── -->
+<div id="add-service-modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-40">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-semibold text-gray-800">Add Service</h2>
+      <button onclick="closeAddModal()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+    </div>
+
+    <form id="add-service-form" enctype="multipart/form-data" class="flex flex-col gap-3"
+          onsubmit="submitAddService(event)">
+      {% csrf_token %}
+
+      <div>
+        <label class="text-xs font-medium text-gray-600">Name *</label>
+        <input name="name" required
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+
+      <div>
+        <label class="text-xs font-medium text-gray-600">Spec Type *</label>
+        <select name="spec_type" id="spec-type-select" required onchange="updateFileAccept()"
+                class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+          <option value="" disabled selected>Select spec type…</option>
+          <option value="OpenAPI">OpenAPI</option>
+          <option value="WSDL">WSDL</option>
+          <option value="MCP_JSON">MCP JSON</option>
+        </select>
+        <p id="add-mcp-template-hint" class="hidden mt-1 text-xs text-primary">
+          Not sure about the format?
+          <a href="#" onclick="downloadMcpJsonTemplate(event)" class="underline font-medium hover:text-primary-light">Download JSON template</a>
+          with sample values to fill in.
+        </p>
+      </div>
+
+      <div>
+        <label class="text-xs font-medium text-gray-600">Spec Source *</label>
+        <div class="mt-1 flex rounded-lg border overflow-hidden text-sm">
+          <button type="button" id="tab-url" onclick="setSourceTab('url')"
+                  class="flex-1 py-2 text-center font-medium bg-primary text-white transition-colors">URL</button>
+          <button type="button" id="tab-file" onclick="setSourceTab('file')"
+                  class="flex-1 py-2 text-center font-medium text-gray-600 hover:bg-surface transition-colors">Upload File</button>
+        </div>
+      </div>
+
+      <div id="url-section">
+        <label class="text-xs font-medium text-gray-600">URL</label>
+        <input id="service-url" name="url" placeholder="https://... or file://..."
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+
+      <div id="file-section" class="hidden">
+        <label class="text-xs font-medium text-gray-600">Spec File</label>
+        <div class="mt-1 relative border-2 border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-primary transition-colors cursor-pointer"
+             onclick="document.getElementById('spec-file').click()">
+          <input id="spec-file" name="spec_file" type="file" accept=".yaml,.yml,.json"
+                 onchange="updateFileLabel(this)" class="hidden" />
+          <p id="file-label" class="text-sm text-gray-400">Click to choose a file, or drag and drop</p>
+          <p id="file-hint" class="text-xs text-gray-300 mt-1">YAML / JSON for OpenAPI &amp; MCP JSON · WSDL / XML for WSDL</p>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-xs font-medium text-gray-600">Category *</label>
+        <input name="category" required placeholder="Policy / Claims / Underwriting..."
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+
+      <div>
+        <label class="text-xs font-medium text-gray-600">Auth Type</label>
+        <select name="auth_type" id="add-auth-type" onchange="toggleAddCredFields()"
+                class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+          <option value="">None</option>
+          <option value="Bearer">Bearer Token</option>
+          <option value="Basic">Basic Auth</option>
+          <option value="Custom">Custom</option>
+          <option value="OAuth2_ClientCredentials">OAuth2 (Client Credentials)</option>
+        </select>
+      </div>
+
+      <!-- Credential fields — shown/hidden based on auth type -->
+      <div id="add-cred-bearer" class="hidden flex flex-col gap-2">
+        <label class="text-xs font-medium text-gray-600">Bearer Token *</label>
+        <input id="add-cred-token" type="password" placeholder="Token value"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+
+      <div id="add-cred-basic" class="hidden flex flex-col gap-2">
+        <label class="text-xs font-medium text-gray-600">Username *</label>
+        <input id="add-cred-username" type="text" placeholder="Username"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+        <label class="text-xs font-medium text-gray-600">Password *</label>
+        <input id="add-cred-password" type="password" placeholder="Password"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+
+      <div id="add-cred-custom" class="hidden flex flex-col gap-2">
+        <label class="text-xs font-medium text-gray-600">Custom Headers (JSON) *</label>
+        <textarea id="add-cred-headers" rows="3" placeholder='{"X-API-Key": "...", "X-Tenant": "..."}'
+                  class="mt-1 w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
+      </div>
+
+      <div id="add-cred-oauth2" class="hidden flex flex-col gap-2">
+        <label class="text-xs font-medium text-gray-600">Token URL *</label>
+        <input id="add-cred-token-url" type="text" placeholder="https://.../oauth/token"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+        <label class="text-xs font-medium text-gray-600">Client ID *</label>
+        <input id="add-cred-client-id" type="text" placeholder="client_id"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+        <label class="text-xs font-medium text-gray-600">Client Secret *</label>
+        <input id="add-cred-client-secret" type="password" placeholder="client_secret"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+        <label class="text-xs font-medium text-gray-600">Scope <span class="font-normal text-gray-400">(optional)</span></label>
+        <input id="add-cred-scope" type="text" placeholder="e.g. read:policies"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+
+      <p id="add-service-error" class="hidden text-xs text-red-600"></p>
+      <div class="flex justify-end gap-2 mt-2">
+        <button type="button" onclick="closeAddModal()"
+                class="text-sm px-4 py-2 border rounded-lg hover:bg-surface">Cancel</button>
+        <button id="add-service-submit" type="submit"
+                class="text-sm px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-light disabled:opacity-50">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ─── Edit Service Modal ────────────────────────────────────────── -->
+<div id="edit-service-modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-40">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-semibold text-gray-800">Edit Service</h2>
+      <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+    </div>
+
+    <form id="edit-service-form" class="flex flex-col gap-3" onsubmit="submitEditService(event)">
+      <input type="hidden" id="edit-service-id" />
+
+      <!-- Read-only name + type -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-medium text-gray-600">Name</label>
+          <input id="edit-name" disabled
+                 class="mt-1 w-full border rounded-lg px-3 py-2 text-sm bg-surface text-gray-500 cursor-not-allowed" />
+        </div>
+        <div>
+          <label class="text-xs font-medium text-gray-600">Spec Type</label>
+          <select id="edit-spec-type" onchange="toggleEditMcpHint()"
+                  class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+            <option value="OpenAPI">OpenAPI</option>
+            <option value="WSDL">WSDL</option>
+            <option value="MCP_JSON">MCP JSON</option>
+          </select>
+          <p id="edit-mcp-template-hint" class="hidden mt-1 text-xs text-primary">
+            <a href="#" onclick="downloadMcpJsonTemplate(event)" class="underline font-medium hover:text-primary-light">Download JSON template</a>
+            with sample values.
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-xs font-medium text-gray-600">Spec Source</label>
+        <div class="mt-1 flex rounded-lg border overflow-hidden text-sm">
+          <button type="button" id="edit-tab-url" onclick="setEditSourceTab('url')"
+                  class="flex-1 py-2 text-center font-medium bg-primary text-white transition-colors">URL</button>
+          <button type="button" id="edit-tab-file" onclick="setEditSourceTab('file')"
+                  class="flex-1 py-2 text-center font-medium text-gray-600 hover:bg-surface transition-colors">Upload File</button>
+        </div>
+      </div>
+
+      <div id="edit-url-section">
+        <label class="text-xs font-medium text-gray-600">URL</label>
+        <input id="edit-url" name="url" placeholder="https://... or file://..."
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+
+      <div id="edit-file-section" class="hidden">
+        <label class="text-xs font-medium text-gray-600">Spec File</label>
+        <div class="mt-1 relative border-2 border-dashed border-gray-200 rounded-lg p-4 text-center hover:border-primary transition-colors cursor-pointer"
+             onclick="document.getElementById('edit-spec-file').click()">
+          <input id="edit-spec-file" name="spec_file" type="file" accept=".yaml,.yml,.json,.wsdl,.xml"
+                 onchange="updateEditFileLabel(this)" class="hidden" />
+          <p id="edit-file-label" class="text-sm text-gray-400">Click to choose a file, or drag and drop</p>
+        </div>
+      </div>
+
+      <div>
+        <label class="text-xs font-medium text-gray-600">Category</label>
+        <input id="edit-category" name="category"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+
+      <div>
+        <label class="text-xs font-medium text-gray-600">Auth Type</label>
+        <select id="edit-auth-type" name="auth_type" onchange="toggleEditCredFields()"
+                class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+          <option value="">None</option>
+          <option value="Bearer">Bearer Token</option>
+          <option value="Basic">Basic Auth</option>
+          <option value="Custom">Custom</option>
+          <option value="OAuth2_ClientCredentials">OAuth2 (Client Credentials)</option>
+        </select>
+      </div>
+
+      <!-- Credential fields — shown/hidden based on auth type; leave empty to keep existing -->
+      <div id="edit-cred-bearer" class="hidden flex flex-col gap-2">
+        <label class="text-xs font-medium text-gray-600">Bearer Token <span class="text-gray-400 font-normal">(leave empty to keep existing)</span></label>
+        <input id="edit-cred-token" type="password" placeholder="New token value"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+
+      <div id="edit-cred-basic" class="hidden flex flex-col gap-2">
+        <p class="text-xs text-gray-400">Leave both fields empty to keep existing credentials.</p>
+        <label class="text-xs font-medium text-gray-600">Username</label>
+        <input id="edit-cred-username" type="text" placeholder="Username"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+        <label class="text-xs font-medium text-gray-600">Password</label>
+        <input id="edit-cred-password" type="password" placeholder="Password"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+
+      <div id="edit-cred-custom" class="hidden flex flex-col gap-2">
+        <label class="text-xs font-medium text-gray-600">Custom Headers (JSON) <span class="text-gray-400 font-normal">(leave empty to keep existing)</span></label>
+        <textarea id="edit-cred-headers" rows="3" placeholder='{"X-API-Key": "...", "X-Tenant": "..."}'
+                  class="mt-1 w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
+      </div>
+
+      <div id="edit-cred-oauth2" class="hidden flex flex-col gap-2">
+        <p class="text-xs text-gray-400">Leave fields empty to keep existing credentials.</p>
+        <label class="text-xs font-medium text-gray-600">Token URL</label>
+        <input id="edit-cred-token-url" type="text" placeholder="https://.../oauth/token"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+        <label class="text-xs font-medium text-gray-600">Client ID</label>
+        <input id="edit-cred-client-id" type="text" placeholder="client_id"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+        <label class="text-xs font-medium text-gray-600">Client Secret</label>
+        <input id="edit-cred-client-secret" type="password" placeholder="client_secret"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+        <label class="text-xs font-medium text-gray-600">Scope <span class="font-normal text-gray-400">(optional)</span></label>
+        <input id="edit-cred-scope" type="text" placeholder="e.g. read:policies"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+
+      <div>
+        <label class="text-xs font-medium text-gray-600">Enabled</label>
+        <select id="edit-enabled" name="enabled"
+                class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+          <option value="true">Yes</option>
+          <option value="false">No</option>
+        </select>
+      </div>
+
+      <!-- Allow / Deny lists -->
+      <div class="border-t pt-3 mt-1">
+        <p class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Tool Filter (Allow / Deny)</p>
+        <p class="text-xs text-gray-400 mb-3">
+          Enter operation names, one per line. <strong>Allowlist</strong> shows only those tools;
+          <strong>Denylist</strong> hides them. Leave both empty to include all tools.
+        </p>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-xs font-medium text-gray-600">Allowlist</label>
+            <textarea id="edit-allowlist" rows="4" placeholder="listSqlFiles&#10;executeSql"
+                      class="mt-1 w-full border rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
+            <p class="text-[10px] text-gray-400 mt-0.5">Only these operations will be exposed</p>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-600">Denylist</label>
+            <textarea id="edit-denylist" rows="4" placeholder="deleteSqlFile&#10;streamEvents"
+                      class="mt-1 w-full border rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
+            <p class="text-[10px] text-gray-400 mt-0.5">These operations will be hidden</p>
+          </div>
+        </div>
+      </div>
+
+      <p id="edit-service-error" class="hidden text-xs text-red-600"></p>
+      <div class="flex justify-end gap-2 mt-2">
+        <button type="button" onclick="closeEditModal()"
+                class="text-sm px-4 py-2 border rounded-lg hover:bg-surface">Cancel</button>
+        <button id="edit-service-submit" type="submit"
+                class="text-sm px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-light disabled:opacity-50">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const API_TOKEN = '{{ api_token }}';
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const FILE_ACCEPT = { OpenAPI: '.yaml,.yml,.json', WSDL: '.wsdl,.xml', MCP_JSON: '.json' };
+
+function statusChipHtml(enabled) {
+  return enabled
+    ? '<span class="status-chip-enabled text-xs px-2 py-0.5 rounded-full">enabled</span>'
+    : '<span class="status-chip-disabled text-xs px-2 py-0.5 rounded-full">disabled</span>';
+}
+
+function actionsCellHtml(svc) {
+  return `
+    <div class="flex gap-2 flex-wrap">
+      <button onclick='openEditModal(${JSON.stringify(svc)})'
+              class="text-xs text-primary underline hover:no-underline">Edit</button>
+      <button onclick="refreshTools(${svc.id}, this)"
+              class="text-xs text-green-600 underline hover:no-underline">Refresh tools</button>
+      <button onclick="discoverOps(${svc.id}, this)"
+              class="text-xs text-blue-500 underline hover:no-underline">Discover ops</button>
+      <button onclick="deleteService(${svc.id}, ${JSON.stringify(svc.name)})"
+              class="text-xs text-red-500 underline hover:no-underline">Delete</button>
+    </div>`;
+}
+
+// ── Credential field visibility ───────────────────────────────────────────────
+function _showCredFields(prefix, authType) {
+  ['bearer', 'basic', 'custom', 'oauth2'].forEach(t => {
+    document.getElementById(`${prefix}-cred-${t}`).classList.add('hidden');
+  });
+  if (authType === 'Bearer') document.getElementById(`${prefix}-cred-bearer`).classList.remove('hidden');
+  else if (authType === 'Basic') document.getElementById(`${prefix}-cred-basic`).classList.remove('hidden');
+  else if (authType === 'Custom') document.getElementById(`${prefix}-cred-custom`).classList.remove('hidden');
+  else if (authType === 'OAuth2_ClientCredentials') document.getElementById(`${prefix}-cred-oauth2`).classList.remove('hidden');
+}
+
+function toggleAddCredFields() {
+  _showCredFields('add', document.getElementById('add-auth-type').value);
+}
+
+function toggleEditCredFields() {
+  _showCredFields('edit', document.getElementById('edit-auth-type').value);
+}
+
+function _buildCredentials(prefix, authType) {
+  if (authType === 'Bearer') {
+    const token = document.getElementById(`${prefix}-cred-token`).value.trim();
+    return token ? { token } : null;
+  }
+  if (authType === 'Basic') {
+    const username = document.getElementById(`${prefix}-cred-username`).value.trim();
+    const password = document.getElementById(`${prefix}-cred-password`).value.trim();
+    return (username || password) ? { username, password } : null;
+  }
+  if (authType === 'Custom') {
+    const raw = document.getElementById(`${prefix}-cred-headers`).value.trim();
+    if (!raw) return null;
+    try { return { headers: JSON.parse(raw) }; }
+    catch { throw new Error('Custom headers must be valid JSON (e.g. {"X-API-Key": "value"})'); }
+  }
+  if (authType === 'OAuth2_ClientCredentials') {
+    const token_url     = document.getElementById(`${prefix}-cred-token-url`).value.trim();
+    const client_id     = document.getElementById(`${prefix}-cred-client-id`).value.trim();
+    const client_secret = document.getElementById(`${prefix}-cred-client-secret`).value.trim();
+    const scope         = document.getElementById(`${prefix}-cred-scope`).value.trim();
+    if (!token_url && !client_id && !client_secret) return null;
+    if (!token_url || !client_id || !client_secret)
+      throw new Error('OAuth2 requires token_url, client_id, and client_secret');
+    const cred = { token_url, client_id, client_secret };
+    if (scope) cred.scope = scope;
+    return cred;
+  }
+  return null;
+}
+
+// ── Add Service ───────────────────────────────────────────────────────────────
+function setSourceTab(tab) {
+  const urlSection  = document.getElementById('url-section');
+  const fileSection = document.getElementById('file-section');
+  const urlInput    = document.getElementById('service-url');
+  const fileInput   = document.getElementById('spec-file');
+  const tabUrl      = document.getElementById('tab-url');
+  const tabFile     = document.getElementById('tab-file');
+  if (tab === 'url') {
+    urlSection.classList.remove('hidden');
+    fileSection.classList.add('hidden');
+    urlInput.required  = true;
+    fileInput.required = false;
+    tabUrl.className  = 'flex-1 py-2 text-center font-medium bg-primary text-white transition-colors';
+    tabFile.className = 'flex-1 py-2 text-center font-medium text-gray-600 hover:bg-surface transition-colors';
+  } else {
+    urlSection.classList.add('hidden');
+    fileSection.classList.remove('hidden');
+    urlInput.required  = false;
+    fileInput.required = true;
+    tabFile.className = 'flex-1 py-2 text-center font-medium bg-primary text-white transition-colors';
+    tabUrl.className  = 'flex-1 py-2 text-center font-medium text-gray-600 hover:bg-surface transition-colors';
+  }
+}
+
+function updateFileAccept() {
+  const specType = document.getElementById('spec-type-select').value;
+  document.getElementById('spec-file').accept = FILE_ACCEPT[specType] || '*';
+  document.getElementById('file-hint').textContent =
+    specType === 'WSDL' ? 'WSDL / XML files' :
+    specType === 'MCP_JSON' ? 'JSON files' : 'YAML / YML / JSON files';
+  const hint = document.getElementById('add-mcp-template-hint');
+  if (specType === 'MCP_JSON') hint.classList.remove('hidden');
+  else hint.classList.add('hidden');
+}
+
+function toggleEditMcpHint() {
+  const specType = document.getElementById('edit-spec-type').value;
+  const hint = document.getElementById('edit-mcp-template-hint');
+  if (specType === 'MCP_JSON') hint.classList.remove('hidden');
+  else hint.classList.add('hidden');
+}
+
+function downloadMcpJsonTemplate(e) {
+  e.preventDefault();
+  const template = {
+    name: "my-service-name",
+    version: "1.0.0",
+    description: "Brief description of what this service does",
+    tools: [
+      {
+        name: "toolName",
+        description: "Describe what this tool does and when to use it. This text is shown to the AI.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            param1: {
+              type: "string",
+              description: "Description of param1 shown to the AI",
+              default: "optional-default-value"
+            },
+            param2: {
+              type: "string",
+              description: "Description of param2 shown to the AI"
+            },
+            param3: {
+              type: "integer",
+              description: "An integer parameter example"
+            }
+          },
+          required: ["param1"]
+        },
+        endpoint: {
+          method: "GET",
+          baseUrl: "https://your-api-base-url.example.com",
+          path: "/your/api/path/",
+          queryParams: ["param1", "param2", "param3"]
+        }
+      }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(template, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'mcp_tool_template.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function updateFileLabel(input) {
+  const label = document.getElementById('file-label');
+  if (input.files && input.files[0]) {
+    label.textContent = input.files[0].name;
+    label.className = 'text-sm text-gray-700 font-medium';
+  } else {
+    label.textContent = 'Click to choose a file, or drag and drop';
+    label.className = 'text-sm text-gray-400';
+  }
+}
+
+function closeAddModal() {
+  document.getElementById('add-service-modal').classList.add('hidden');
+  document.getElementById('add-service-form').reset();
+  document.getElementById('file-label').textContent = 'Click to choose a file, or drag and drop';
+  document.getElementById('file-label').className = 'text-sm text-gray-400';
+  document.getElementById('add-service-error').classList.add('hidden');
+  setSourceTab('url');
+  _showCredFields('add', '');
+}
+
+async function submitAddService(e) {
+  e.preventDefault();
+  const form    = document.getElementById('add-service-form');
+  const btn     = document.getElementById('add-service-submit');
+  const errEl   = document.getElementById('add-service-error');
+  const formData = new FormData(form);
+
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  errEl.classList.add('hidden');
+
+  try {
+    const authType = document.getElementById('add-auth-type').value;
+    let credentials = null;
+    try { credentials = _buildCredentials('add', authType); }
+    catch (credErr) {
+      errEl.textContent = credErr.message;
+      errEl.classList.remove('hidden');
+      return;
+    }
+    if (credentials) formData.set('credentials', JSON.stringify(credentials));
+
+    const resp = await fetch('{% url "imcp-admin-services" %}', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + API_TOKEN },
+      body: formData,
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      errEl.textContent = data.error || 'Failed to add service.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    appendServiceRow(data);
+    closeAddModal();
+    showToast('Service added successfully');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save';
+  }
+}
+
+function appendServiceRow(svc) {
+  const tbody = document.getElementById('services-table-body');
+  const emptyRow = document.getElementById('empty-row');
+  if (emptyRow) emptyRow.remove();
+
+  tbody.insertAdjacentHTML('beforeend', `
+    <tr id="service-row-${svc.id}" class="hover:bg-gray-50 transition-colors">
+      <td class="px-4 py-3 font-medium text-gray-800">${svc.name}</td>
+      <td class="px-4 py-3 text-gray-600">${svc.spec_type}</td>
+      <td class="px-4 py-3 text-gray-600" id="cat-${svc.id}">${svc.category}</td>
+      <td class="px-4 py-3 text-gray-400" id="auth-${svc.id}">${svc.auth_type || '—'}</td>
+      <td class="px-4 py-3" id="status-cell-${svc.id}">${statusChipHtml(svc.enabled)}</td>
+      <td class="px-4 py-3" id="actions-${svc.id}">${actionsCellHtml(svc)}</td>
+    </tr>
+    <tr id="ops-result-${svc.id}"></tr>
+  `);
+}
+
+// ── Edit Service ──────────────────────────────────────────────────────────────
+function openEditModal(svc) {
+  document.getElementById('edit-service-id').value   = svc.id;
+  document.getElementById('edit-name').value         = svc.name;
+  document.getElementById('edit-spec-type').value    = svc.spec_type || 'OpenAPI';
+  toggleEditMcpHint();
+  document.getElementById('edit-url').value          = svc.url || '';
+  document.getElementById('edit-category').value     = svc.category || '';
+  document.getElementById('edit-auth-type').value    = svc.auth_type || '';
+  document.getElementById('edit-enabled').value      = svc.enabled ? 'true' : 'false';
+
+  const allowOps = svc.allowlist && svc.allowlist.operations ? svc.allowlist.operations : [];
+  const denyOps  = svc.denylist  && svc.denylist.operations  ? svc.denylist.operations  : [];
+  document.getElementById('edit-allowlist').value = allowOps.join('\n');
+  document.getElementById('edit-denylist').value  = denyOps.join('\n');
+
+  // Clear any previously typed credentials (they're never returned by the API)
+  ['edit-cred-token', 'edit-cred-username', 'edit-cred-password', 'edit-cred-headers',
+   'edit-cred-token-url', 'edit-cred-client-id', 'edit-cred-client-secret', 'edit-cred-scope'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  toggleEditCredFields();
+
+  document.getElementById('edit-service-error').classList.add('hidden');
+  document.getElementById('edit-service-modal').classList.remove('hidden');
+}
+
+function closeEditModal() {
+  document.getElementById('edit-service-modal').classList.add('hidden');
+  _showCredFields('edit', '');
+  setEditSourceTab('url');
+}
+
+function setEditSourceTab(tab) {
+  const urlSection  = document.getElementById('edit-url-section');
+  const fileSection = document.getElementById('edit-file-section');
+  const tabUrl      = document.getElementById('edit-tab-url');
+  const tabFile     = document.getElementById('edit-tab-file');
+  if (tab === 'url') {
+    urlSection.classList.remove('hidden');
+    fileSection.classList.add('hidden');
+    tabUrl.className  = 'flex-1 py-2 text-center font-medium bg-primary text-white transition-colors';
+    tabFile.className = 'flex-1 py-2 text-center font-medium text-gray-600 hover:bg-surface transition-colors';
+  } else {
+    urlSection.classList.add('hidden');
+    fileSection.classList.remove('hidden');
+    tabFile.className = 'flex-1 py-2 text-center font-medium bg-primary text-white transition-colors';
+    tabUrl.className  = 'flex-1 py-2 text-center font-medium text-gray-600 hover:bg-surface transition-colors';
+  }
+}
+
+function updateEditFileLabel(input) {
+  const label = document.getElementById('edit-file-label');
+  if (input.files && input.files[0]) {
+    label.textContent = input.files[0].name;
+    label.className = 'text-sm text-gray-700 font-medium';
+  } else {
+    label.textContent = 'Click to choose a file, or drag and drop';
+    label.className = 'text-sm text-gray-400';
+  }
+}
+
+async function submitEditService(e) {
+  e.preventDefault();
+  const id    = document.getElementById('edit-service-id').value;
+  const btn   = document.getElementById('edit-service-submit');
+  const errEl = document.getElementById('edit-service-error');
+
+  const allowLines = document.getElementById('edit-allowlist').value.trim();
+  const denyLines  = document.getElementById('edit-denylist').value.trim();
+  const allowOps   = allowLines ? allowLines.split(/\s*[\n,]\s*/).filter(Boolean) : [];
+  const denyOps    = denyLines  ? denyLines.split(/\s*[\n,]\s*/).filter(Boolean)  : [];
+
+  const authType = document.getElementById('edit-auth-type').value || null;
+  let credentials = null;
+  try { credentials = _buildCredentials('edit', authType); }
+  catch (credErr) {
+    errEl.textContent = credErr.message;
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  const payload = {
+    spec_type: document.getElementById('edit-spec-type').value,
+    url:       document.getElementById('edit-url').value.trim(),
+    category:  document.getElementById('edit-category').value.trim(),
+    auth_type: authType,
+    enabled:   document.getElementById('edit-enabled').value === 'true',
+    allowlist: allowOps.length ? { operations: allowOps } : null,
+    denylist:  denyOps.length  ? { operations: denyOps  } : null,
+  };
+  if (credentials !== null) payload.credentials = credentials;
+
+  // Use FormData if a file was selected, otherwise plain JSON
+  const fileInput = document.getElementById('edit-spec-file');
+  const hasFile = fileInput && fileInput.files && fileInput.files[0];
+
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+  errEl.classList.add('hidden');
+
+  let fetchOptions;
+  if (hasFile) {
+    const fd = new FormData();
+    fd.append('spec_file', fileInput.files[0]);
+    Object.entries(payload).forEach(([k, v]) =>
+      fd.append(k, typeof v === 'object' ? JSON.stringify(v) : v)
+    );
+    fetchOptions = {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + API_TOKEN },
+      body: fd,
+    };
+  } else {
+    fetchOptions = {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bearer ' + API_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    };
+  }
+
+  try {
+    const resp = await fetch(`/imcp/admin/services/${id}`, fetchOptions);
+    const data = await resp.json();
+    if (!resp.ok) {
+      errEl.textContent = data.error || 'Failed to save changes.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    // Update the row in-place
+    const catEl    = document.getElementById('cat-' + id);
+    const authEl   = document.getElementById('auth-' + id);
+    const statusEl = document.getElementById('status-cell-' + id);
+    const actEl    = document.getElementById('actions-' + id);
+    if (catEl)    catEl.textContent = data.category;
+    if (authEl)   authEl.textContent = data.auth_type || '—';
+    if (statusEl) statusEl.innerHTML = statusChipHtml(data.enabled);
+    if (actEl)    actEl.innerHTML = actionsCellHtml(data);
+
+    closeEditModal();
+    showToast('Service updated');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save Changes';
+  }
+}
+
+// ── Refresh Tools ─────────────────────────────────────────────────────────────
+async function refreshTools(id, btn) {
+  const original = btn.textContent;
+  btn.textContent = 'Refreshing…';
+  btn.disabled = true;
+  try {
+    const resp = await fetch(`/imcp/admin/tools/refresh?serviceId=${id}`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + API_TOKEN },
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      showToast('Refresh failed: ' + (data.error || resp.status), true);
+      return;
+    }
+    showToast(`Tools refreshed — ${data.total_tools_generated} tool(s) generated`);
+  } catch (e) {
+    showToast('Refresh error: ' + e.message, true);
+  } finally {
+    btn.textContent = original;
+    btn.disabled = false;
+  }
+}
+
+// ── Delete Service ────────────────────────────────────────────────────────────
+async function deleteService(id, name) {
+  if (!confirm(`Permanently delete service "${name}"? This cannot be undone.`)) return;
+
+  try {
+    const resp = await fetch(`/imcp/admin/services/${id}?hard_delete=true`, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + API_TOKEN },
+    });
+    if (resp.ok || resp.status === 204) {
+      const row     = document.getElementById('service-row-' + id);
+      const opsRow  = document.getElementById('ops-result-' + id);
+      if (row) row.remove();
+      if (opsRow) opsRow.remove();
+      // Show empty state if table is now empty
+      const tbody = document.getElementById('services-table-body');
+      if (!tbody.querySelector('tr[id^="service-row-"]')) {
+        tbody.insertAdjacentHTML('beforeend', `
+          <tr id="empty-row">
+            <td colspan="6" class="px-4 py-10 text-center text-gray-400">
+              No services yet. Add your first WSDL/OpenAPI to generate MCP tools.
+            </td>
+          </tr>`);
+      }
+      showToast('Service deleted');
+    } else {
+      const data = await resp.json().catch(() => ({}));
+      showToast(data.error || 'Delete failed', 'error');
+    }
+  } catch (e) {
+    showToast('Delete failed: ' + e, 'error');
+  }
+}
+
+// ── Discover Ops ──────────────────────────────────────────────────────────────
+async function discoverOps(id, btn) {
+  btn.textContent = '…';
+  btn.disabled = true;
+  const resultRow = document.getElementById('ops-result-' + id);
+  try {
+    const resp = await fetch(`/imcp/admin/services/${id}/discover-operations`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + API_TOKEN },
+    });
+    const ops = await resp.json();
+    if (!resp.ok) {
+      resultRow.innerHTML = `<td colspan="6" class="px-4 py-2 text-xs text-red-500">${ops.error || 'Failed'}</td>`;
+    } else {
+      const rows = ops.map(op => `
+        <tr class="bg-blue-50 text-xs">
+          <td class="pl-8 pr-4 py-1.5 text-gray-700 font-mono">${op.name}</td>
+          <td class="px-4 py-1.5 text-gray-500">${op.method || ''}</td>
+          <td class="px-4 py-1.5 text-gray-500 font-mono">${op.path || op.summary || ''}</td>
+          <td colspan="3" class="px-4 py-1.5 text-gray-400">${op.description || ''}</td>
+        </tr>`).join('');
+      resultRow.outerHTML = rows || `<tr><td colspan="6" class="px-4 py-2 text-xs text-gray-400">No operations found.</td></tr>`;
+    }
+  } catch(e) {
+    resultRow.innerHTML = `<td colspan="6" class="px-4 py-2 text-xs text-red-500">Error: ${e}</td>`;
+  } finally {
+    btn.textContent = 'Discover ops';
+    btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}

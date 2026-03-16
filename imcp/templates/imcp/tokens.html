@@ -1,0 +1,381 @@
+{% extends "imcp/base.html" %}
+
+{% block title %}Tokens — iMCP{% endblock %}
+{% block page_title %}Tokens &amp; API Keys{% endblock %}
+
+{% block content %}
+<div class="flex flex-col gap-6">
+
+  <!-- ── JWT Generator ─────────────────────────────────────────────── -->
+  <div class="card p-5">
+    <h2 class="font-semibold text-gray-800 mb-1">JWT Token Generator</h2>
+    <p class="text-xs text-gray-400 mb-4">
+      Generate a signed JWT for use in VS Code, API clients, or CI pipelines.
+      Tokens are signed with your configured <code class="bg-surface px-1 rounded">JWT_SECRET</code>.
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+      <div>
+        <label class="text-xs font-medium text-gray-600">Subject (sub)</label>
+        <input id="jwt-sub" value="vscode-user"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+      <div>
+        <label class="text-xs font-medium text-gray-600">Roles (comma-separated)</label>
+        <input id="jwt-roles" value="user"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+      <div>
+        <label class="text-xs font-medium text-gray-600">Expires in</label>
+        <select id="jwt-expires"
+                class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+          <option value="60">1 hour</option>
+          <option value="480">8 hours</option>
+          <option value="1440">1 day</option>
+          <option value="10080">1 week</option>
+          <option value="43200">30 days</option>
+          <option value="525600" selected>1 year</option>
+        </select>
+      </div>
+    </div>
+
+    <button onclick="generateJWT()"
+            class="bg-primary text-white text-sm px-4 py-2 rounded-lg hover:bg-primary-light transition-colors">
+      Generate JWT
+    </button>
+
+    <!-- Result -->
+    <div id="jwt-result" class="hidden mt-4">
+      <div class="flex items-center justify-between mb-1">
+        <label class="text-xs font-medium text-gray-600">Token</label>
+        <button onclick="copyText('jwt-token-value', 'Token copied!')"
+                class="text-xs text-primary underline hover:no-underline">Copy token</button>
+      </div>
+      <textarea id="jwt-token-value" readonly rows="3"
+                class="w-full border rounded-lg px-3 py-2 text-xs font-mono bg-surface resize-none focus:outline-none"></textarea>
+
+      <!-- VS Code snippet -->
+      <div class="mt-3">
+        <div class="flex items-center justify-between mb-1">
+          <label class="text-xs font-medium text-gray-600">VS Code <code class="bg-surface px-1 rounded">settings.json</code> snippet</label>
+          <button onclick="copyText('vscode-snippet', 'Snippet copied!')"
+                  class="text-xs text-primary underline hover:no-underline">Copy snippet</button>
+        </div>
+        <pre id="vscode-snippet"
+             class="bg-gray-900 text-green-400 rounded-lg p-4 text-xs overflow-auto"></pre>
+      </div>
+
+      <p id="jwt-expires-note" class="text-xs text-gray-400 mt-2"></p>
+    </div>
+  </div>
+
+  <!-- ── API Keys ───────────────────────────────────────────────────── -->
+  <div class="card p-5">
+    <div class="flex items-center justify-between mb-1">
+      <div>
+        <h2 class="font-semibold text-gray-800">API Keys</h2>
+        <p class="text-xs text-gray-400 mt-0.5">
+          Persistent <code class="bg-surface px-1 rounded">imcp_…</code> keys — no expiry unless set.
+          The full key is shown only once at creation.
+        </p>
+      </div>
+      <button onclick="document.getElementById('new-key-modal').classList.remove('hidden')"
+              class="bg-primary text-white text-sm px-4 py-2 rounded-lg hover:bg-primary-light transition-colors">
+        + New API Key
+      </button>
+    </div>
+
+    <table class="w-full text-sm mt-4">
+      <thead class="bg-surface">
+        <tr>
+          <th class="text-left px-4 py-3 text-gray-600 font-medium">Name</th>
+          <th class="text-left px-4 py-3 text-gray-600 font-medium">Prefix</th>
+          <th class="text-left px-4 py-3 text-gray-600 font-medium">User</th>
+          <th class="text-left px-4 py-3 text-gray-600 font-medium">Roles</th>
+          <th class="text-left px-4 py-3 text-gray-600 font-medium">Expires</th>
+          <th class="text-left px-4 py-3 text-gray-600 font-medium">Status</th>
+          <th class="text-left px-4 py-3 text-gray-600 font-medium">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100" id="api-keys-tbody">
+        {% for key in api_keys %}
+        <tr id="key-row-{{ key.id }}" class="hover:bg-gray-50">
+          <td class="px-4 py-3 font-medium text-gray-800">{{ key.name }}</td>
+          <td class="px-4 py-3 font-mono text-xs text-gray-600">{{ key.key_prefix }}…</td>
+          <td class="px-4 py-3 text-gray-600">{{ key.user_id }}</td>
+          <td class="px-4 py-3 text-gray-500 text-xs">{{ key.roles|join:", " }}</td>
+          <td class="px-4 py-3 text-gray-400 text-xs">{{ key.expires_at|default:"Never" }}</td>
+          <td class="px-4 py-3">
+            {% if key.revoked %}
+              <span class="status-chip-disabled text-xs px-2 py-0.5 rounded-full">revoked</span>
+            {% elif key.enabled %}
+              <span class="status-chip-enabled text-xs px-2 py-0.5 rounded-full">active</span>
+            {% else %}
+              <span class="status-chip-disabled text-xs px-2 py-0.5 rounded-full">disabled</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-3">
+            {% if not key.revoked %}
+            <button onclick="revokeKey({{ key.id }}, '{{ key.name }}')"
+                    class="text-xs text-red-500 underline hover:no-underline">Revoke</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr id="keys-empty-row">
+          <td colspan="7" class="px-4 py-8 text-center text-gray-400 text-sm">
+            No API keys yet. Create one to use instead of JWT tokens.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ── New API Key Modal ───────────────────────────────────────────── -->
+<div id="new-key-modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-40">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-semibold text-gray-800">New API Key</h2>
+      <button onclick="closeKeyModal()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+    </div>
+
+    <div class="flex flex-col gap-3">
+      <div>
+        <label class="text-xs font-medium text-gray-600">Key Name *</label>
+        <input id="key-name" placeholder="VS Code / CI Pipeline / ..."
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+      <div>
+        <label class="text-xs font-medium text-gray-600">User ID *</label>
+        <input id="key-user" value="{{ request.user.username }}"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+      <div>
+        <label class="text-xs font-medium text-gray-600">Roles (comma-separated)</label>
+        <input id="key-roles" value="user"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+      <div>
+        <label class="text-xs font-medium text-gray-600">Description</label>
+        <input id="key-desc" placeholder="Optional note"
+               class="mt-1 w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
+      </div>
+      <p id="key-error" class="hidden text-xs text-red-600"></p>
+    </div>
+
+    <!-- Created key display (shown after creation) -->
+    <div id="key-created-box" class="hidden mt-4 bg-green-50 border border-green-200 rounded-lg p-4">
+      <p class="text-xs font-semibold text-green-800 mb-2">
+        Key created — copy it now. It won't be shown again.
+      </p>
+      <div class="flex gap-2 items-center">
+        <code id="key-created-value"
+              class="flex-1 font-mono text-xs bg-white border rounded px-2 py-1 text-gray-800 break-all"></code>
+        <button onclick="copyText('key-created-value', 'Key copied!')"
+                class="shrink-0 text-xs bg-primary text-white px-3 py-1.5 rounded hover:bg-primary-light">Copy</button>
+      </div>
+      <div class="mt-3">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-xs font-medium text-green-800">VS Code snippet</span>
+          <button onclick="copyText('key-vscode-snippet', 'Snippet copied!')"
+                  class="text-xs text-primary underline hover:no-underline">Copy</button>
+        </div>
+        <pre id="key-vscode-snippet"
+             class="bg-gray-900 text-green-400 rounded p-3 text-xs overflow-auto"></pre>
+      </div>
+    </div>
+
+    <div id="key-form-actions" class="flex justify-end gap-2 mt-4">
+      <button type="button" onclick="closeKeyModal()"
+              class="text-sm px-4 py-2 border rounded-lg hover:bg-surface">Cancel</button>
+      <button id="key-submit-btn" onclick="createApiKey()"
+              class="text-sm px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-light disabled:opacity-50">
+        Create Key
+      </button>
+    </div>
+    <div id="key-done-actions" class="hidden flex justify-end mt-4">
+      <button onclick="closeKeyModal()"
+              class="text-sm px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-light">Done</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const API_TOKEN = '{{ api_token }}';
+const MCP_URL   = window.location.origin + '/imcp/mcp';
+
+// ── JWT Generator ─────────────────────────────────────────────────────────
+async function generateJWT() {
+  const sub     = document.getElementById('jwt-sub').value.trim() || 'user';
+  const rolesRaw = document.getElementById('jwt-roles').value.trim();
+  const roles   = rolesRaw ? rolesRaw.split(/\s*,\s*/).filter(Boolean) : ['user'];
+  const expires = parseInt(document.getElementById('jwt-expires').value);
+
+  try {
+    const resp = await fetch('{% url "imcp-dev-token" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sub, roles, expires_in_minutes: expires }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) { showToast(data.error || 'Failed to generate token', 'error'); return; }
+
+    const token = data.access_token;
+    document.getElementById('jwt-token-value').value = token;
+    document.getElementById('vscode-snippet').textContent = buildVscodeSnippet(token);
+
+    const expLabel = document.getElementById('jwt-expires').options[
+      document.getElementById('jwt-expires').selectedIndex
+    ].text;
+    document.getElementById('jwt-expires-note').textContent =
+      `Expires in: ${expLabel}  |  Subject: ${sub}  |  Roles: ${roles.join(', ')}`;
+
+    document.getElementById('jwt-result').classList.remove('hidden');
+    showToast('Token generated');
+  } catch(e) {
+    showToast('Error: ' + e, 'error');
+  }
+}
+
+function buildVscodeSnippet(token) {
+  return `{
+  "servers": {
+    "iMCP": {
+      "url": "${MCP_URL}",
+      "type": "http",
+      "headers": {
+        "Authorization": "Bearer ${token}"
+      }
+    }
+  },
+  "inputs": []
+}`;
+}
+
+// ── API Key Manager ───────────────────────────────────────────────────────
+function closeKeyModal() {
+  document.getElementById('new-key-modal').classList.add('hidden');
+  document.getElementById('key-name').value = '';
+  document.getElementById('key-roles').value = 'user';
+  document.getElementById('key-desc').value = '';
+  document.getElementById('key-error').classList.add('hidden');
+  document.getElementById('key-created-box').classList.add('hidden');
+  document.getElementById('key-form-actions').classList.remove('hidden');
+  document.getElementById('key-done-actions').classList.add('hidden');
+  document.getElementById('key-submit-btn').disabled = false;
+  document.getElementById('key-submit-btn').textContent = 'Create Key';
+}
+
+async function createApiKey() {
+  const name  = document.getElementById('key-name').value.trim();
+  const user  = document.getElementById('key-user').value.trim();
+  const roles = document.getElementById('key-roles').value.trim()
+                  .split(/\s*,\s*/).filter(Boolean);
+  const desc  = document.getElementById('key-desc').value.trim();
+  const errEl = document.getElementById('key-error');
+  const btn   = document.getElementById('key-submit-btn');
+
+  if (!name) { errEl.textContent = 'Name is required.'; errEl.classList.remove('hidden'); return; }
+  if (!user) { errEl.textContent = 'User ID is required.'; errEl.classList.remove('hidden'); return; }
+  errEl.classList.add('hidden');
+
+  btn.disabled = true;
+  btn.textContent = 'Creating…';
+
+  try {
+    const resp = await fetch('{% url "imcp-admin-api-keys" %}', {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + API_TOKEN,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name, user_id: user, roles, description: desc }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) {
+      errEl.textContent = data.error || 'Failed to create key.';
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Create Key';
+      return;
+    }
+
+    // Show the full key + VS Code snippet (only time it's visible)
+    document.getElementById('key-created-value').textContent = data.key;
+    document.getElementById('key-vscode-snippet').textContent = buildVscodeSnippet(data.key);
+    document.getElementById('key-created-box').classList.remove('hidden');
+    document.getElementById('key-form-actions').classList.add('hidden');
+    document.getElementById('key-done-actions').classList.remove('hidden');
+
+    // Append row to the API keys table
+    appendKeyRow(data);
+    showToast('API key created');
+  } catch(e) {
+    errEl.textContent = 'Error: ' + e;
+    errEl.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Create Key';
+  }
+}
+
+function appendKeyRow(key) {
+  const tbody = document.getElementById('api-keys-tbody');
+  const emptyRow = document.getElementById('keys-empty-row');
+  if (emptyRow) emptyRow.remove();
+
+  tbody.insertAdjacentHTML('afterbegin', `
+    <tr id="key-row-${key.id}" class="hover:bg-gray-50 bg-green-50">
+      <td class="px-4 py-3 font-medium text-gray-800">${key.name}</td>
+      <td class="px-4 py-3 font-mono text-xs text-gray-600">${key.key_prefix}…</td>
+      <td class="px-4 py-3 text-gray-600">${key.user_id}</td>
+      <td class="px-4 py-3 text-gray-500 text-xs">${(key.roles || []).join(', ')}</td>
+      <td class="px-4 py-3 text-gray-400 text-xs">${key.expires_at || 'Never'}</td>
+      <td class="px-4 py-3">
+        <span class="status-chip-enabled text-xs px-2 py-0.5 rounded-full">active</span>
+      </td>
+      <td class="px-4 py-3">
+        <button onclick="revokeKey(${key.id}, '${key.name}')"
+                class="text-xs text-red-500 underline hover:no-underline">Revoke</button>
+      </td>
+    </tr>
+  `);
+}
+
+async function revokeKey(id, name) {
+  if (!confirm(`Revoke API key "${name}"? It will stop working immediately.`)) return;
+  try {
+    const resp = await fetch(`/imcp/admin/api-keys/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + API_TOKEN },
+    });
+    if (resp.ok || resp.status === 204) {
+      const row = document.getElementById('key-row-' + id);
+      if (row) {
+        row.querySelector('td:last-child').innerHTML = '';
+        const statusCell = row.querySelector('td:nth-child(6)');
+        if (statusCell) statusCell.innerHTML =
+          '<span class="status-chip-disabled text-xs px-2 py-0.5 rounded-full">revoked</span>';
+      }
+      showToast('API key revoked');
+    } else {
+      showToast('Revoke failed', 'error');
+    }
+  } catch(e) {
+    showToast('Error: ' + e, 'error');
+  }
+}
+
+// ── Shared copy helper ────────────────────────────────────────────────────
+function copyText(elementId, message) {
+  const el = document.getElementById(elementId);
+  const text = el.tagName === 'TEXTAREA' || el.tagName === 'INPUT'
+    ? el.value : el.textContent;
+  navigator.clipboard.writeText(text).then(() => showToast(message || 'Copied!'));
+}
+</script>
+{% endblock %}

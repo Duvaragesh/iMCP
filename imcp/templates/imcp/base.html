@@ -1,0 +1,110 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}iMCP Portal{% endblock %}</title>
+
+  <!-- TailwindCSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#004838',
+            'primary-light': '#006b53',
+            'primary-dark': '#003028',
+            surface: '#F0F0F0',
+            bg: '#F8F8F8',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- HTMX CDN -->
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+  <!-- CodeMirror (for JSON editor in Test Console) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #F8F8F8;
+      --surface: #F0F0F0;
+      --primary: #004838;
+      --text: #181810;
+    }
+    body { background-color: var(--bg); color: var(--text); }
+    .sidebar-icon { transition: background 0.15s; }
+    .sidebar-icon:hover, .sidebar-icon.active { background: rgba(255,255,255,0.15); border-radius: 8px; }
+    .card { background: white; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+    .status-chip-enabled  { background: #dcfce7; color: #166534; }
+    .status-chip-disabled { background: #fee2e2; color: #991b1b; }
+    .status-chip-cached   { background: #dbeafe; color: #1d4ed8; }
+    .status-chip-fresh    { background: #f3f4f6; color: #374151; }
+    .CodeMirror { height: 300px; border-radius: 8px; font-size: 13px; }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body class="h-full flex">
+
+  <!-- ── Sidebar ─────────────────────────────────────────── -->
+  <aside class="w-20 bg-primary flex flex-col items-center py-4 gap-2 shrink-0">
+    <a href="{% url 'imcp-portal' %}" class="mb-4" title="iMCP">
+      <div class="w-12 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white font-bold text-sm tracking-tight">iMCP</div>
+    </a>
+
+    {% include "imcp/components/sidebar_link.html" with url_name="imcp-portal-dashboard" icon="⊞" label="Dashboard" %}
+    {% include "imcp/components/sidebar_link.html" with url_name="imcp-portal-services" icon="☁" label="Services" %}
+    {% include "imcp/components/sidebar_link.html" with url_name="imcp-portal-tools" icon="⚙" label="Tools" %}
+    {% include "imcp/components/sidebar_link.html" with url_name="imcp-portal-test-console" icon="▶" label="Test" %}
+    {% include "imcp/components/sidebar_link.html" with url_name="imcp-portal-tokens" icon="🔑" label="Tokens" %}
+    {% include "imcp/components/sidebar_link.html" with url_name="imcp-portal-status" icon="♥" label="Status" %}
+  </aside>
+
+  <!-- ── Main content ──────────────────────────────────────── -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+
+    <!-- Top bar -->
+    <header class="h-14 bg-white border-b border-gray-200 flex items-center px-6 gap-4 shrink-0">
+      <h1 class="font-semibold text-gray-800 text-sm">{% block page_title %}iMCP Portal{% endblock %}</h1>
+      <div class="flex-1"></div>
+      <span class="text-xs text-gray-500">{{ request.user.username|default:"guest" }}</span>
+    </header>
+
+    <!-- Content canvas -->
+    <main class="flex-1 overflow-auto p-6" id="main-content">
+      {% block content %}{% endblock %}
+    </main>
+
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 flex flex-col gap-2 z-50"></div>
+
+  <script>
+    // Simple toast helper
+    function showToast(message, type = 'success') {
+      const colors = {success: 'bg-green-600', error: 'bg-red-600', warning: 'bg-yellow-500'};
+      const el = document.createElement('div');
+      el.className = `${colors[type] || colors.success} text-white text-sm px-4 py-2 rounded-lg shadow-lg transition-opacity`;
+      el.textContent = message;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 3000);
+    }
+
+    // HTMX response error handler
+    document.addEventListener('htmx:responseError', function(e) {
+      showToast('Request failed: ' + e.detail.xhr.status, 'error');
+    });
+  </script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

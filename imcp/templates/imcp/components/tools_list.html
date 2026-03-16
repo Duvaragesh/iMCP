@@ -1,0 +1,16 @@
+{% load imcp_tags %}
+{% for entry in tool_entries %}
+<div class="mb-3">
+  <p class="text-xs text-gray-400 font-medium mb-1">{{ entry.service_name }}</p>
+  {% for tool in entry.tools %}
+  <button data-tool="{{ tool|to_json }}"
+          onclick="showToolDetail(JSON.parse(this.dataset.tool))"
+          class="w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-surface transition-colors flex items-center justify-between">
+    <span class="text-gray-700 truncate">{{ tool.name }}</span>
+    {% if entry.cached %}<span class="status-chip-cached text-[10px] px-1.5 py-0.5 rounded-full ml-1">cached</span>{% endif %}
+  </button>
+  {% endfor %}
+</div>
+{% empty %}
+<p class="text-xs text-gray-400">No tools found.</p>
+{% endfor %}

@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=68.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "imcp"
+version = "0.1.0"
+description = "iMCP - Intelligent Legacy Bridge: pluggable Django app for IBMi insurance systems"
+requires-python = ">=3.11"
+dependencies = [
+    # Web framework
+    "django>=5.0",
+
+    # SOAP/WSDL
+    "zeep>=4.2.1",
+
+    # OpenAPI parsing
+    "prance>=23.6.21.0",
+    "openapi-spec-validator>=0.7.1",
+
+    # HTTP client (async executors)
+    "httpx>=0.26.0",
+
+    # Authentication
+    "python-jose[cryptography]>=3.3.0",
+
+    # Caching
+    "cachetools>=5.3.2",
+
+    # Validation
+    "jsonschema>=4.21.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Code quality
+    "black>=24.1.1",
+    "ruff>=0.1.14",
+    "mypy>=1.8.0",
+    "django-stubs>=5.0.0",
+    "types-cachetools>=5.3.0",
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.venv
+  | migrations
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+check_untyped_defs = true
+no_implicit_optional = true
+plugins = ["mypy_django_plugin.main"]
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
