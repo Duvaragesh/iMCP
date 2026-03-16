@@ -272,17 +272,64 @@ IMCP_API_TOKEN=your-admin-api-token
 python manage.py migrate
 ```
 
-### 4. Start the server
+### 4. Create a superuser (admin account)
+
+```bash
+python manage.py createsuperuser
+```
+
+You will be prompted for:
+
+```
+Username: admin
+Email address: admin@example.com
+Password: ••••••••
+Password (again): ••••••••
+Superuser created successfully.
+```
+
+> This Django superuser account is used to log in to the Admin Portal at `/admin/login/`. It is separate from iMCP API keys.
+
+### 5. Generate an iMCP API Key
+
+Once logged in to the portal, go to **Token Manager** and create an API key. This key is used to:
+- Authenticate calls to the **MCP endpoint** (`/imcp/mcp`) from AI clients (Claude, Copilot, etc.)
+- Authenticate calls to the **Admin REST API** (`/imcp/admin/...`)
+
+```
+Name:        my-claude-key
+Description: Used by Claude Code MCP client
+Roles:       admin
+```
+
+Copy the full key shown — **it is only displayed once**.
+
+### 6. Start the server
 
 ```bash
 python manage.py runserver
-# or for async support
-uvicorn imcp_project.asgi:application --reload
+# or with async/ASGI support
+uvicorn config.asgi:application --reload
 ```
 
-### 5. Open the portal
+### 7. Open the portal
 
-Navigate to `http://localhost:8000/imcp/portal/` and log in with your configured API token.
+Navigate to `http://localhost:8000/admin/login/` and log in with the superuser credentials created in step 4.
+
+The portal home is at `http://localhost:8000/imcp/portal/`.
+
+### 8. Connect an AI client
+
+Use the API key from step 5 to connect Claude Code or VS Code:
+
+```bash
+# Claude Code CLI
+claude mcp add --transport http iMCP http://localhost:8000/imcp/mcp \
+  --header "Authorization: Bearer <your-api-key>" \
+  --scope project
+```
+
+Run `/mcp` inside Claude Code to confirm `iMCP` is listed and tools are available.
 
 ---
 
